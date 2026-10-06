@@ -1,0 +1,53 @@
+# Holder Supabase-projektet vågent.
+#
+# Supabase Free sætter et projekt på pause efter 7 dage uden databaseaktivitet.
+# Denne workflow kalder den lille ping()-funktion hver 3. dag, så familien
+# aldrig møder en sovende database. Den læser URL og publishable key fra
+# config.js (nøglen er offentlig og beskyttet af RLS), så der skal ikke
+# opsættes secrets. Slet filen, hvis I ikke ønsker den.
+
+name: Hold databasen vågen
+
+on:
+  schedule:
+    - cron: '17 6 */3 * *'
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ping Supabase
+        run: |
+          URL=$(grep -oP "supabaseUrl:\s*'\K[^']+" config.js || true)
+          KEY=$(grep -oP "supabaseKey:\s*'\K[^']+" config.js || true)
+          if [ -z "$URL" ] || [ -z "$KEY" ]; then
+            echo "config.js er ikke udfyldt endnu. Springer over."
+            exit 0
+          fi
+          AUTH=()
+          case "$KEY" in eyJ*) AUTH=(-H "Authorization: Bearer $KEY") ;; esac
+          for i in 1 2 3; do
+            if curl -fsS -X POST "$URL/rest/v1/rpc/ping" -H "apikey: $KEY" "${AUTH[@]}" \
+                 -H "Content-Type: application/json" -d '{}'; then
+              echo; echo "Databasen svarede."; exit 0
+            fi
+            echo "Forsøg $i fejlede, prøver igen om 30 sekunder…"; sleep 30
+          done
+          echo "::error::Supabase svarede ikke. Er projektet sat på pause? Se README → Pause."
+          exit 1
+
+      # GitHub slår planlagte workflows fra efter 60 dage uden commits i et
+      # offentligt repo. Et "enable"-kald nulstiller det (bedste forsøg).
+      - name: Hold workflowet aktivt
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/keepalive.yml/enable" || true
