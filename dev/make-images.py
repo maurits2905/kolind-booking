@@ -11,6 +11,7 @@ from PIL import Image, ImageEnhance, ImageFilter
 ROOT = Path(__file__).resolve().parent.parent
 PHOTOS = ROOT / "assets" / "photos"
 OUT = ROOT / "assets" / "img"
+PORTRAIT_MIN_WIDTH = 600
 
 PROPERTIES = {
     "mallorca": {
@@ -22,7 +23,8 @@ PROPERTIES = {
     "odde": {
         "src": "odde-original.jpg",
         "wide": (0, 0, 800, 450),
-        "portrait": (118, 0, 578, 440),   # the first cabin between the birches
+        "portrait": (492, 52, 800, 376),  # the cabin on the right (the family's house)
+        "upscale": True,
         "grade": {"color": 1.0, "contrast": 1.02, "brightness": 1.0, "warm": 1.0},
     },
 }
@@ -65,6 +67,10 @@ def main():
         src = grade(Image.open(PHOTOS / cfg["src"]).convert("RGB"), cfg["grade"])
         wide = src.crop(cfg["wide"])
         portrait = src.crop(cfg["portrait"])
+        if cfg.get("upscale") and portrait.width < PORTRAIT_MIN_WIDTH:  # tight crop: keep cards sharp on phones
+            h = round(portrait.height * PORTRAIT_MIN_WIDTH / portrait.width)
+            portrait = portrait.resize((PORTRAIT_MIN_WIDTH, h), Image.LANCZOS)
+            portrait = portrait.filter(ImageFilter.UnsharpMask(radius=1.2, percent=40, threshold=2))
         save(wide, f"{pid}.webp")
         save(wide, f"{pid}-sm.webp", width=640, quality=80)
         save(portrait, f"{pid}-portrait.webp")

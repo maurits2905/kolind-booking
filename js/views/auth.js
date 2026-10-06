@@ -10,7 +10,7 @@ import { busy, toast, nextId } from '../ui.js';
 function art() {
   return html`<div class="auth-art" aria-hidden="true">
     <figure class="auth-photo auth-photo-a"><img src="assets/img/mallorca-portrait.webp" alt="" style="object-position:52% 50%"></figure>
-    <figure class="auth-photo auth-photo-b"><img src="assets/img/odde-portrait.webp" alt="" style="object-position:46% 55%"></figure>
+    <figure class="auth-photo auth-photo-b"><img src="assets/img/odde-portrait.webp" alt="" style="object-position:50% 50%"></figure>
   </div>`;
 }
 

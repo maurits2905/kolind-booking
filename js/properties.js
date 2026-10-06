@@ -23,7 +23,7 @@ export const STYLE = {
     imageSm: 'assets/img/odde-sm.webp',
     portrait: 'assets/img/odde-portrait.webp',
     focus: '48% 52%',
-    portraitFocus: '46% 55%',
+    portraitFocus: '50% 50%',
     teaser: {
       name: 'Sjællands Odde',
       area: 'Sjællands Odde · Danmark',
