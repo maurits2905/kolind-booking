@@ -125,6 +125,7 @@ export async function openBookingSheet(opts = {}) {
     if (f.guests > p.max_guests) f.guests = p.max_guests;
     const nights = f.start && f.end ? D.diffDays(f.start, f.end) : 0;
     const conflictPending = f.start && f.end && !adminMode && overlapsPending(entries, f.propertyId, f.start, f.end);
+    const others = members.filter((m) => m.id !== state.me.id);
     const ids = { comment: nextId('c'), who: nextId('w'), name: nextId('n'), email: nextId('e'), phone: nextId('p'), title: nextId('t'), member: nextId('m') };
 
     sheet.setBody(html`<form class="booking-form" novalidate>
@@ -180,15 +181,17 @@ export async function openBookingSheet(opts = {}) {
               <label class="choice"><input type="radio" name="who" value="guest" ${f.who === 'guest' ? 'checked' : ''}><span class="dot"></span>Gæst</label>
             </div>
           </fieldset>
-          ${f.who === 'member'
-            ? html`<div class="field">
-                <label class="label" for="${ids.member}">Familiemedlem</label>
-                <select class="select" id="${ids.member}" name="userId" required>
-                  <option value="">Vælg…</option>
-                  ${members.filter((m) => m.id !== state.me.id).map((m) => html`<option value="${m.id}" ${m.id === f.userId ? 'selected' : ''}>${m.full_name}</option>`)}
-                </select>
-              </div>`
-            : ''}
+          ${f.who === 'member' && !others.length
+            ? html`<div class="notice">${icon('info')}<span>Der er ingen andre familiemedlemmer med en konto endnu. Inviter dem under <strong>Administration → Familie</strong>, eller vælg <strong>Mig selv</strong> eller <strong>Gæst</strong>.</span></div>`
+            : f.who === 'member'
+              ? html`<div class="field">
+                  <label class="label" for="${ids.member}">Familiemedlem</label>
+                  <select class="select" id="${ids.member}" name="userId" required>
+                    <option value="">Vælg…</option>
+                    ${others.map((m) => html`<option value="${m.id}" ${m.id === f.userId ? 'selected' : ''}>${m.full_name}</option>`)}
+                  </select>
+                </div>`
+              : ''}
           ${f.who === 'guest'
             ? html`<div class="field">
                 <label class="label" for="${ids.name}">Gæstens navn</label>
