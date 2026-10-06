@@ -23,7 +23,7 @@ PROPERTIES = {
     "odde": {
         "src": "odde-original.jpg",
         "wide": (0, 0, 800, 450),
-        "portrait": (492, 52, 800, 376),  # the cabin on the right (the family's house)
+        "portrait": (474, 55, 776, 373),  # the cabin on the right (the family's house), centred
         "upscale": True,
         "grade": {"color": 1.0, "contrast": 1.02, "brightness": 1.0, "warm": 1.0},
     },

@@ -45,6 +45,21 @@ function inactiveView() {
   </div></div>`;
 }
 
+// The loading screen (#boot) shows its emblem after 250 ms. Once the emblem is
+// visible it stays at least ~0.7 s so it never flickers, then fades out.
+let bootDone = false;
+function hideBoot() {
+  if (bootDone) return;
+  bootDone = true;
+  const el = document.getElementById('boot');
+  if (!el) return;
+  const shown = performance.now() - 250;
+  setTimeout(() => {
+    el.classList.add('is-leaving');
+    setTimeout(() => el.remove(), 600);
+  }, shown > 0 ? Math.max(0, 700 - shown) : 0);
+}
+
 async function onRoute() {
   const r = parse();
   const seq = ++renderSeq;
@@ -73,6 +88,7 @@ async function onRoute() {
     renderShell({ path: r.path, chrome: 'minimal', overHero: false });
     mount(el, inactiveView());
     el.querySelector('[data-logout]').addEventListener('click', () => auth.signOut());
+    hideBoot();
     return;
   }
 
@@ -93,6 +109,7 @@ async function onRoute() {
     mount(el, html`<div class="state-page"><div class="inner">${errorState(err)}</div></div>`);
     el.querySelector('[data-retry]')?.addEventListener('click', () => onRoute());
   }
+  hideBoot();
 
   if (lastPath !== null && !samePage) el.focus({ preventScroll: true });
   lastPath = r.path;
@@ -102,6 +119,7 @@ async function boot() {
   if (!isConfigured()) {
     renderShell({ path: '/', chrome: 'minimal', overHero: false });
     await setup.render(viewEl());
+    hideBoot();
     return;
   }
 
@@ -112,6 +130,7 @@ async function boot() {
     renderShell({ path: '/', chrome: 'minimal', overHero: false });
     mount(viewEl(), html`<div class="state-page"><div class="inner">${errorState(err)}</div></div>`);
     viewEl().querySelector('[data-retry]')?.addEventListener('click', () => location.reload());
+    hideBoot();
     return;
   }
 
@@ -153,6 +172,8 @@ window.addEventListener('beforeinstallprompt', (e) => {
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 }
+
+setTimeout(hideBoot, 15000); // never leave the loading screen up if something hangs
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
 else boot();

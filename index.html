@@ -37,11 +37,21 @@
   <a class="skip-link" href="#view">Gå til indhold</a>
   <header class="site-header" id="site-header"></header>
   <main id="view" class="view" tabindex="-1">
-    <div class="boot">
-      <span class="boot-mark" aria-hidden="true">K</span>
-      <span class="sr-only">Indlæser…</span>
-    </div>
+    <span class="sr-only">Indlæser…</span>
   </main>
+  <div class="boot" id="boot" aria-hidden="true">
+    <div class="boot-stage">
+      <div class="boot-emblem">
+        <svg class="boot-ring" viewBox="0 0 88 88">
+          <circle class="boot-track" cx="44" cy="44" r="42"/>
+          <circle class="boot-arc boot-arc-sea" cx="44" cy="44" r="42" pathLength="100"/>
+          <circle class="boot-arc boot-arc-sun" cx="44" cy="44" r="42" pathLength="100"/>
+        </svg>
+        <span class="boot-mark">K</span>
+      </div>
+      <div class="boot-word">Kolind <em>Booking</em></div>
+    </div>
+  </div>
   <nav class="tabbar" id="tabbar" aria-label="Hovedmenu" hidden></nav>
   <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
   <noscript>
