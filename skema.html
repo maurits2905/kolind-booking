@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Spørgsmål om husene · Kolind Booking</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#F7F3EC">
+  <meta name="color-scheme" content="light">
+  <link rel="icon" type="image/png" href="assets/icons/favicon-64.png">
+  <link rel="preload" href="assets/fonts/newsreader.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/hanken-grotesk.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <style>
+    .q-header { padding: 18px 0; border-bottom: 1px solid var(--line); }
+    .q-intro { padding: 32px 0 8px; }
+    .q-intro .h1 { margin: 10px 0 14px; }
+    .q-intro p + p { margin-top: 0.7em; }
+    .q-section { margin-top: 36px; }
+    .q-section > .eyebrow { display: block; margin-bottom: 6px; }
+    .q-section[data-theme='mallorca'] > .eyebrow { color: var(--mallorca); }
+    .q-section[data-theme='odde'] > .eyebrow { color: var(--odde); }
+    .q-card { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 20px; margin-top: 14px; }
+    .q-card .label { display: block; margin-bottom: 4px; }
+    .q-hint { font-size: 0.85rem; color: var(--muted); margin: 0 0 10px; }
+    .q-card .textarea { width: 100%; min-height: 3.2em; resize: vertical; }
+    .q-card.is-changed { border-color: var(--line-2); box-shadow: inset 4px 0 0 var(--ok); }
+    .q-send { margin: 40px 0 64px; padding: 24px 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 24px; }
+    .q-send .h3 { margin-bottom: 8px; }
+    .q-actions { display: grid; gap: 10px; margin-top: 18px; }
+    .q-actions .btn { width: 100%; justify-content: center; }
+    .q-saved { font-size: 0.82rem; color: var(--muted); margin-top: 12px; min-height: 1.2em; }
+  </style>
+</head>
+<body>
+  <header class="q-header">
+    <div class="container container-narrow">
+      <span class="wordmark">Kolind <span class="amp">Booking</span></span>
+    </div>
+  </header>
+
+  <main class="container container-narrow">
+    <section class="q-intro">
+      <span class="eyebrow">Spørgeskema</span>
+      <h1 class="h1">Hjælp os med at beskrive <em>husene</em></h1>
+      <p class="lede">Teksterne er et første udkast. Ret dem, så de passer, og skriv det, der mangler.</p>
+      <p class="muted">Står der allerede noget rigtigt, så lad det bare stå. Kender du ikke svaret, så spring over. Dine svar gemmes på telefonen, så du kan stoppe og fortsætte senere. Tryk på knappen nederst, når du er færdig.</p>
+    </section>
+
+    <div class="q-card">
+      <label class="label" for="q-name">Dit navn</label>
+      <input class="input" id="q-name" data-key="navn" autocomplete="name">
+    </div>
+
+    <div id="q-sections"></div>
+
+    <section class="q-send">
+      <h2 class="h3">Færdig?</h2>
+      <p class="muted">Tryk på knappen. Så åbner din mail med svarene skrevet ind. Du skal bare trykke Send.</p>
+      <div class="q-actions">
+        <a class="btn btn-accent" id="q-mail" href="#">Send svarene som mail</a>
+        <button class="btn" type="button" id="q-share" hidden>Send som SMS eller besked</button>
+        <button class="btn btn-ghost" type="button" id="q-copy">Kopiér svarene</button>
+      </div>
+      <p class="q-saved" id="q-status" aria-live="polite"></p>
+    </section>
+  </main>
+
+  <script type="module">
+    const SECTIONS = [
+      {
+        id: 'mallorca', title: 'Mallorca', theme: 'mallorca',
+        questions: [
+          ['tagline', 'Kort beskrivelse på én linje', 'Vises på forsiden.', 'Middelhavssol, appelsinlunde og bjergene lige uden for døren.'],
+          ['beskrivelse', 'Beskrivelse af huset', '2-4 linjer om huset og området.', 'Huset ligger mellem bjergene og citrustræerne på Mallorca. Fra terrassen kan man følge solen hen over bjergene, og der er gåafstand til torvet og caféerne. Huset er indrettet til lange, dovne dage: morgenkaffe på altanen, frokost i skyggen og aftener med udsigt til bjergene.'],
+          ['adresse', 'Adresse', 'Vej og nummer, postnummer og by.', ''],
+          ['personer', 'Hvor mange kan sove der?', 'Højeste antal personer.', '6'],
+          ['senge', 'Soveværelser og senge', 'Fx 3 soveværelser: 1 dobbeltseng, 2 enkeltsenge, 1 sovesofa.', ''],
+          ['checkin', 'Tidligste ankomst', '', 'Kl. 16:00'],
+          ['checkout', 'Seneste afrejse', '', 'Kl. 11:00'],
+          ['noegler', 'Nøgler', 'Hvor er nøglerne, og hvordan får man dem?', 'Nøglen udleveres efter aftale.'],
+          ['noeglekode', 'Nøglekode eller nøgleboks', 'Vises kun for dem, der har et godkendt ophold.', ''],
+          ['transport', 'Transport og parkering', 'Fly, bil, bus og hvor man parkerer.', 'Fly til Palma (PMI).'],
+          ['wifi', 'Wi-Fi', 'Netværkets navn og kode.', ''],
+          ['sengetoej', 'Sengetøj og håndklæder', '', 'Sengetøj og håndklæder ligger i skabet på første sal.'],
+          ['affald', 'Affald', '', 'Affald sorteres og afleveres i containerne for enden af gaden.'],
+          ['teknik', 'Aircondition, varme, vand og el', 'Hvad skal man vide og huske?', 'Aircondition slukkes, når huset forlades.'],
+          ['rengoering', 'Rengøring ved afrejse', 'Hvad forventer I, at man gør?', ''],
+          ['regler', 'Husregler', '', 'Luk vinduer og skodder, når I tager ud.\nRygning kun udendørs.\nEfterlad huset, som I selv ønsker at finde det.\nSkriv gerne i gæstebogen.'],
+          ['husdyr', 'Må man have hund med?', '', ''],
+          ['kontakt', 'Kontaktperson og telefon', 'Hvem ringer man til, hvis der er noget?', ''],
+          ['hjaelp', 'Lokal hjælp', 'Nabo, håndværker, nødnummer.', ''],
+          ['tips', 'Gode tips', 'Indkøb, strande, restauranter, udflugter.', ''],
+        ],
+      },
+      {
+        id: 'odde', title: 'Sjællands Odde', theme: 'odde',
+        questions: [
+          ['tagline', 'Kort beskrivelse på én linje', 'Vises på forsiden.', 'Nyt træhus mellem fyrretræer, lyng og Kattegat.'],
+          ['beskrivelse', 'Beskrivelse af huset', '2-4 linjer om huset og området.', 'Sommerhuset ligger mellem høje fyrretræer, få minutters gang fra stranden ved Kattegat. Store vinduesfag og terrasse hele vejen rundt gør, at naturen føles som en del af huset. Her er plads til ro: lange gåture på stranden, bål om aftenen og brætspil, når vejret skifter.'],
+          ['adresse', 'Adresse', 'Vej og nummer, postnummer og by.', ''],
+          ['personer', 'Hvor mange kan sove der?', 'Højeste antal personer.', '8'],
+          ['senge', 'Soveværelser og senge', 'Fx 3 soveværelser: 1 dobbeltseng, 2 enkeltsenge, 1 sovesofa.', ''],
+          ['checkin', 'Tidligste ankomst', '', 'Kl. 15:00'],
+          ['checkout', 'Seneste afrejse', '', 'Kl. 11:00'],
+          ['noegler', 'Nøgler', 'Hvor er nøglerne, og hvordan får man dem?', 'Nøglen ligger i nøgleboksen ved døren.'],
+          ['noeglekode', 'Kode til nøgleboksen', 'Vises kun for dem, der har et godkendt ophold.', ''],
+          ['transport', 'Transport og parkering', 'Vejen derhen og hvor man parkerer.', 'Kør mod Sjællands Odde ad rute 21.'],
+          ['wifi', 'Wi-Fi', 'Netværkets navn og kode.', ''],
+          ['sengetoej', 'Sengetøj og håndklæder', '', 'Medbring selv sengetøj og håndklæder.'],
+          ['affald', 'Affald', 'Hvilken dag tømmes skraldespanden?', 'Skraldespanden stilles ud til vejen før tømning.'],
+          ['teknik', 'Varme, brændeovn, vand og el', 'Hvad skal man vide og huske?', 'Brænde til brændeovnen ligger i skuret.\nHusk at slukke for vandet ved afrejse om vinteren.'],
+          ['rengoering', 'Rengøring ved afrejse', 'Hvad forventer I, at man gør?', ''],
+          ['regler', 'Husregler', '', 'Ingen husdyr i sengene.\nRygning kun udendørs.\nSluk brændeovnen helt, før I går i seng.'],
+          ['husdyr', 'Må man have hund med?', '', ''],
+          ['kontakt', 'Kontaktperson og telefon', 'Hvem ringer man til, hvis der er noget?', ''],
+          ['hjaelp', 'Lokal hjælp', 'Nabo, håndværker, vandværk.', ''],
+          ['tips', 'Gode tips', 'Indkøb, strande, udflugter.', ''],
+        ],
+      },
+      {
+        id: 'regler', title: 'Regler for booking', theme: '',
+        questions: [
+          ['laengde', 'Hvor mange nætter må et ophold højst vare?', 'I dag: 60 nætter (administratorer 120).', ''],
+          ['frem', 'Hvor langt ude i fremtiden må man booke?', 'I dag: 2 år.', ''],
+          ['egne', 'Er der perioder, I altid selv bruger husene?', 'Fx jul, påske eller bestemte uger.', ''],
+          ['forret', 'Hvem har forret i højsæson?', 'Fx skolernes sommerferie.', ''],
+          ['betaling', 'Skal man betale noget?', 'Fx el, rengøring eller et beløb pr. nat.', ''],
+          ['gaester', 'Må familien låne husene ud til venner?', 'I dag: ja, via et gæstelink, og I godkender.', ''],
+        ],
+      },
+      {
+        id: 'familie', title: 'Hvem skal have adgang?', theme: '',
+        questions: [
+          ['personer', 'Familien', 'Én person pr. linje: navn, email, og om personen skal kunne godkende (administrator) eller bare booke (familie).', ''],
+          ['andet', 'Er der andet, vi har glemt?', '', ''],
+        ],
+      },
+    ];
+
+    const STORE = 'kolind-skema-v1';
+    const params = new URLSearchParams(location.hash.slice(1));
+    const recipient = (params.get('til') || '').replace(/[^\w.+@-]/g, '');
+    const recipientName = (params.get('navn') || 'Maurits').slice(0, 40);
+
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem(STORE) || '{}'); } catch { saved = {}; }
+
+    const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+    const host = document.getElementById('q-sections');
+    host.innerHTML = SECTIONS.map((s) => `
+      <section class="q-section" data-theme="${s.theme}">
+        <span class="eyebrow">${esc(s.title)}</span>
+        ${s.questions.map(([k, label, hint, value]) => {
+          const key = `${s.id}.${k}`;
+          const v = key in saved ? saved[key] : value;
+          return `<div class="q-card${v !== value ? ' is-changed' : ''}" data-card="${key}">
+            <label class="label" for="q-${key}">${esc(label)}</label>
+            ${hint ? `<p class="q-hint">${esc(hint)}</p>` : ''}
+            <textarea class="textarea" id="q-${key}" data-key="${key}" rows="${Math.max(2, Math.ceil((value.length || 1) / 38))}">${esc(v)}</textarea>
+          </div>`;
+        }).join('')}
+      </section>`).join('');
+
+    const nameInput = document.getElementById('q-name');
+    nameInput.value = saved.navn || '';
+
+    const defaults = Object.fromEntries(SECTIONS.flatMap((s) => s.questions.map(([k, , , v]) => [`${s.id}.${k}`, v])));
+    const status = document.getElementById('q-status');
+
+    function current() {
+      const out = { navn: nameInput.value.trim() };
+      for (const el of document.querySelectorAll('textarea[data-key]')) out[el.dataset.key] = el.value;
+      return out;
+    }
+
+    function save() {
+      try {
+        localStorage.setItem(STORE, JSON.stringify(current()));
+        status.textContent = 'Gemt på telefonen.';
+      } catch {
+        status.textContent = '';
+      }
+    }
+
+    function message() {
+      const a = current();
+      const parts = [];
+      let unchanged = 0;
+      for (const s of SECTIONS) {
+        const lines = [];
+        for (const [k, label] of s.questions) {
+          const key = `${s.id}.${k}`;
+          const v = (a[key] || '').trim();
+          if (v === (defaults[key] || '').trim()) {
+            if (v) unchanged++;
+            continue;
+          }
+          lines.push(`${/[?:]$/.test(label) ? label : `${label}:`}\n${v || '(slettet)'}`);
+        }
+        if (lines.length) parts.push(`== ${s.title} ==\n\n${lines.join('\n\n')}`);
+      }
+      const who = a.navn || 'mig';
+      const body = [
+        `Hej ${recipientName}`,
+        `Her er mine svar om husene.`,
+        parts.length ? parts.join('\n\n') : '(Ingen ændringer)',
+        unchanged ? `${unchanged} svar er uændrede, så teksten der passer.` : '',
+        `Kærlig hilsen\n${who}`,
+      ].filter(Boolean).join('\n\n');
+      return { subject: `Svar om husene fra ${who}`, body };
+    }
+
+    function mailto() {
+      const { subject, body } = message();
+      const enc = (s) => encodeURIComponent(s).replace(/%0A/g, '%0D%0A');
+      return `mailto:${recipient}?subject=${enc(subject)}&body=${enc(body)}`;
+    }
+
+    document.addEventListener('input', (e) => {
+      const el = e.target.closest('[data-key]');
+      if (!el) return;
+      const card = el.closest('[data-card]');
+      if (card) card.classList.toggle('is-changed', el.value !== defaults[card.dataset.card]);
+      save();
+    });
+
+    const mailBtn = document.getElementById('q-mail');
+    mailBtn.addEventListener('click', (e) => {
+      save();
+      mailBtn.href = mailto();
+    });
+
+    const shareBtn = document.getElementById('q-share');
+    if (navigator.share) {
+      shareBtn.hidden = false;
+      shareBtn.addEventListener('click', async () => {
+        const { subject, body } = message();
+        try { await navigator.share({ title: subject, text: body }); } catch { /* cancelled */ }
+      });
+    }
+
+    document.getElementById('q-copy').addEventListener('click', async () => {
+      const { subject, body } = message();
+      const text = `${subject}\n\n${body}`;
+      try {
+        await navigator.clipboard.writeText(text);
+        status.textContent = 'Kopieret. Sæt det ind i en mail eller besked.';
+      } catch {
+        status.textContent = 'Kunne ikke kopiere. Brug knappen "Send svarene som mail".';
+      }
+    });
+  </script>
+</body>
+</html>

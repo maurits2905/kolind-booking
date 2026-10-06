@@ -348,6 +348,7 @@ Der er ingen servere, certifikater eller processer at holde kørende.
 
 ```
 index.html              App-skal
+skema.html              Spørgeskema om husene til ejerne (svar sendes som mail, gemmes kun på telefonen)
 config.js               Supabase URL + publishable key + sidens navn
 manifest.webmanifest    PWA
 sw.js                   Service worker (network first)
