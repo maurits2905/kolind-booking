@@ -25,6 +25,45 @@
 
   <link rel="preload" href="assets/fonts/newsreader.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/fonts/hanken-grotesk.woff2" as="font" type="font/woff2" crossorigin>
+  <style>
+    /* Loading screen: inline so it is styled before any CSS file arrives. */
+    @font-face { font-family: 'Newsreader'; src: url('assets/fonts/newsreader.woff2') format('woff2'); font-weight: 200 800; font-style: normal; font-display: swap; }
+    @font-face { font-family: 'Newsreader'; src: url('assets/fonts/newsreader-italic.woff2') format('woff2'); font-weight: 200 800; font-style: italic; font-display: swap; }
+    .boot { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; background: #f7f3ec; color: #1d1a16;
+      transition: opacity .75s cubic-bezier(.4, 0, .2, 1) .12s, visibility 0s linear .9s; }
+    .boot.is-leaving { opacity: 0; visibility: hidden; }
+    .boot-stage { display: grid; justify-items: center; transition: transform .7s cubic-bezier(.4, 0, .2, 1), opacity .5s ease, filter .6s ease; }
+    .boot.is-leaving .boot-stage { transform: translateY(-14px) scale(1.04); opacity: 0; filter: blur(3px); }
+    .boot-emblem { position: relative; width: 96px; height: 96px; display: grid; place-items: center; }
+    .boot-ring { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; transform: rotate(-90deg); }
+    .boot-track { stroke: #d6c9b6; stroke-width: .9; stroke-dasharray: 100 100; animation: boot-draw 1s cubic-bezier(.65, 0, .35, 1) .05s backwards; }
+    .boot-arc { stroke-width: 2; stroke-linecap: round; transform-box: fill-box; transform-origin: center; }
+    .boot-arc-sun { stroke: #b2583a; stroke-dasharray: 22 78;
+      animation: boot-fade .5s ease .7s backwards, boot-orbit 2.2s cubic-bezier(.45, .05, .35, 1) .7s infinite, boot-sweep 2.2s cubic-bezier(.45, .05, .35, 1) .7s infinite; }
+    .boot-arc-sea { stroke: #3e5a4a; stroke-dasharray: 12 88; stroke-dashoffset: -50;
+      animation: boot-fade .5s ease .9s backwards, boot-orbit 3.3s cubic-bezier(.45, .05, .35, 1) .9s infinite; }
+    .boot-mark { font-family: 'Newsreader', Georgia, serif; font-style: italic; font-weight: 360; font-size: 50px; line-height: 1; color: #b2583a;
+      transform: translate(-3px, 1px); opacity: 0; }
+    .boot-word { margin-top: 26px; font-family: 'Newsreader', Georgia, serif; font-size: 1.35rem; letter-spacing: .005em; opacity: 0; }
+    .boot-word em { font-style: italic; color: #b2583a; }
+    .boot-tag { margin-top: 10px; font: 600 .68rem/1 'Hanken Grotesk', system-ui, sans-serif; letter-spacing: .22em; text-transform: uppercase; color: #7a7064; opacity: 0; }
+    .boot.is-ready .boot-mark { opacity: 1; animation: boot-mark-in 1.1s cubic-bezier(.16, 1, .3, 1) .2s backwards; }
+    .boot.is-ready .boot-word { opacity: 1; animation: boot-word-in 1s cubic-bezier(.16, 1, .3, 1) .75s backwards; }
+    .boot.is-ready .boot-tag { opacity: 1; animation: boot-tag-in .9s ease 1.2s backwards; }
+    .boot.is-quick .boot-stage { animation: boot-fade .5s ease .25s backwards; }
+    .boot.is-quick .boot-track { animation: none; }
+    @keyframes boot-draw { from { stroke-dashoffset: 100; } }
+    @keyframes boot-fade { from { opacity: 0; } }
+    @keyframes boot-orbit { to { transform: rotate(360deg); } }
+    @keyframes boot-sweep { 0%, 100% { stroke-dasharray: 8 92; } 50% { stroke-dasharray: 34 66; } }
+    @keyframes boot-mark-in { from { opacity: 0; filter: blur(10px); transform: translate(-3px, 8px) scale(.92); } }
+    @keyframes boot-word-in { from { opacity: 0; clip-path: inset(0 100% 0 0); letter-spacing: .08em; } to { clip-path: inset(0 0 0 0); } }
+    @keyframes boot-tag-in { from { opacity: 0; transform: translateY(4px); } }
+    @media (prefers-reduced-motion: reduce) {
+      .boot *, .boot.is-ready * { animation: none !important; }
+      .boot-arc-sea { transform: rotate(180deg); }
+    }
+  </style>
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/calendar.css">
@@ -43,18 +82,64 @@
     <div class="boot-stage">
       <div class="boot-emblem">
         <svg class="boot-ring" viewBox="0 0 88 88">
-          <circle class="boot-track" cx="44" cy="44" r="42"/>
-          <circle class="boot-arc boot-arc-sea" cx="44" cy="44" r="42" pathLength="100"/>
-          <circle class="boot-arc boot-arc-sun" cx="44" cy="44" r="42" pathLength="100"/>
+          <circle class="boot-track" cx="44" cy="44" r="42" fill="none" pathLength="100"/>
+          <circle class="boot-arc boot-arc-sea" cx="44" cy="44" r="42" fill="none" pathLength="100"/>
+          <circle class="boot-arc boot-arc-sun" cx="44" cy="44" r="42" fill="none" pathLength="100"/>
         </svg>
         <span class="boot-mark">K</span>
       </div>
-      <div class="boot-word">Kolind <em>Booking</em></div>
+      <div class="boot-word"><span>Kolind <em>Booking</em></span></div>
+      <div class="boot-tag">Familiens ferieboliger</div>
     </div>
   </div>
+  <script>
+    // Loading screen. First open in a session plays the full intro (~2 s); later
+    // reloads only show it when loading is slow. main.js calls kolindBoot.done()
+    // when the first page is ready; the fallbacks below make sure it never hangs,
+    // even if an older cached main.js is running.
+    (function () {
+      var boot = document.getElementById('boot');
+      var view = document.getElementById('view');
+      var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var intro = true;
+      try {
+        intro = !sessionStorage.getItem('kb-intro');
+        sessionStorage.setItem('kb-intro', '1');
+      } catch (e) {}
+      if (!intro) boot.classList.add('is-quick');
+      var minMs = intro ? (reduce ? 900 : 2300) : 0;
+      var finished = false;
+      function done() {
+        if (finished) return;
+        finished = true;
+        var shown = performance.now();
+        var wait = intro ? Math.max(0, minMs - shown) : shown > 250 ? Math.max(0, 1000 - shown) : 0;
+        setTimeout(function () {
+          boot.classList.add('is-leaving');
+          // Replay the page's own entrance so it rises in as the screen fades.
+          if (view && view.getAnimations) {
+            view.getAnimations({ subtree: true }).forEach(function (a) {
+              if (a.playState === 'finished') { a.cancel(); a.play(); }
+            });
+          }
+          setTimeout(function () { boot.remove(); }, 1000);
+        }, wait);
+      }
+      window.kolindBoot = { done: done };
+      var ready = function () { boot.classList.add('is-ready'); };
+      if (document.fonts && document.fonts.load) {
+        Promise.race([document.fonts.load('italic 46px Newsreader'), new Promise(function (r) { setTimeout(r, 600); })]).then(ready, ready);
+      } else ready();
+      if (window.MutationObserver && view) {
+        new MutationObserver(function (m, obs) { obs.disconnect(); setTimeout(done, 6000); }).observe(view, { childList: true });
+      }
+      setTimeout(done, 20000);
+    })();
+  </script>
   <nav class="tabbar" id="tabbar" aria-label="Hovedmenu" hidden></nav>
   <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
   <noscript>
+    <style>.boot { display: none; }</style>
     <p class="noscript">Siden kræver JavaScript. Slå det til i din browser for at se husene og booke.</p>
   </noscript>
 </body>

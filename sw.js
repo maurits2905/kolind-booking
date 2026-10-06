@@ -2,7 +2,7 @@
 // Network first, so a new version on GitHub Pages is always picked up; the
 // cache is only a fallback. Supabase and weather requests are never cached.
 
-const CACHE = 'kolind-booking-v2';
+const CACHE = 'kolind-booking-v3';
 const SHELL = [
   './',
   'index.html',
@@ -34,8 +34,12 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
+  // no-cache: always ask GitHub Pages whether the file changed (a cheap 304 when
+  // not), so an update never mixes a new index.html with old CSS or JS from the
+  // browser's 10-minute HTTP cache.
+  const fresh = req.mode === 'navigate' ? fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' }) : fetch(req, { cache: 'no-cache' });
   event.respondWith(
-    fetch(req)
+    fresh
       .then((res) => {
         if (res.ok) {
           const copy = res.clone();

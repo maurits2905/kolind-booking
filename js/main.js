@@ -45,19 +45,9 @@ function inactiveView() {
   </div></div>`;
 }
 
-// The loading screen (#boot) shows its emblem after 250 ms. Once the emblem is
-// visible it stays at least ~0.7 s so it never flickers, then fades out.
-let bootDone = false;
+// Fades out the loading screen (see the inline script in index.html).
 function hideBoot() {
-  if (bootDone) return;
-  bootDone = true;
-  const el = document.getElementById('boot');
-  if (!el) return;
-  const shown = performance.now() - 250;
-  setTimeout(() => {
-    el.classList.add('is-leaving');
-    setTimeout(() => el.remove(), 600);
-  }, shown > 0 ? Math.max(0, 700 - shown) : 0);
+  window.kolindBoot?.done();
 }
 
 async function onRoute() {
@@ -172,8 +162,6 @@ window.addEventListener('beforeinstallprompt', (e) => {
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 }
-
-setTimeout(hideBoot, 15000); // never leave the loading screen up if something hangs
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
 else boot();
