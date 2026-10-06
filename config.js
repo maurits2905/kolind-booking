@@ -8,8 +8,8 @@
 // Læg ALDRIG en "secret" eller "service_role"-nøgle her.
 
 export default {
-  supabaseUrl: '',
-  supabaseKey: '',
+  supabaseUrl: 'https://zjwxjgckzqaahceswgsc.supabase.co',
+  supabaseKey: 'sb_publishable_p6XN2N5cl_5NuHXMcX-Ciw_Xkiye5bi',
 
   siteName: 'Kolind Booking',
   siteTagline: 'Familiens ferieboliger',
