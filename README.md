@@ -6,7 +6,7 @@ Familien ser ledige perioder og sender forespørgsler. Administratorerne godkend
 
 > **Estimated recurring cost: 0 DKK/month**
 >
-> Siden ligger på GitHub Pages (gratis for offentlige repos), og data og login ligger i Supabase Free (intet betalingskort). Ingen server, ingen betalte API'er og ingen mailservice.
+> Siden ligger på GitHub Pages (gratis for offentlige repos), og data og login ligger i Supabase Free (intet betalingskort). Ingen server, ingen betalte API'er og ingen mailservice. Eneste udgift: domænet kolindbooking.dk, som betales årligt.
 
 ---
 
@@ -19,7 +19,7 @@ Familien ser ledige perioder og sender forespørgsler. Administratorerne godkend
 5. [Administratorer](#administratorer)
 6. [Familie, gæster og adgangskoder](#familie-gæster-og-adgangskoder)
 7. [Billeder og tekster](#billeder-og-tekster)
-8. [Eget domæne senere (kolindbooking.dk)](#eget-domæne-senere)
+8. [Eget domæne (kolindbooking.dk)](#eget-domæne)
 9. [Backup](#backup)
 10. [Når Supabase sætter projektet på pause](#pause-supabase-free)
 11. [Lokal udvikling og tests](#lokal-udvikling-og-tests)
@@ -48,7 +48,7 @@ Commit aldrig adresser, emails, adgangskoder eller nøgler, der starter med `sb_
 1. I repoet: **Settings → Pages**.
 2. Under **Build and deployment → Source**: vælg **Deploy from a branch**.
 3. Branch: **main**, mappe: **/ (root)**, tryk **Save**.
-4. Efter 1-2 minutter står der øverst: *Your site is live at `https://<brugernavn>.github.io/kolind-booking/`*.
+4. Efter 1-2 minutter står der øverst: *Your site is live at …*. Med eget domæne er det `https://kolindbooking.dk/` (se [Eget domæne](#eget-domæne)).
 
 Siden viser nu "Forbind siden til Supabase". Det er meningen; det klares i del B og C.
 
@@ -162,7 +162,7 @@ Resten af familien inviteres inde i appen: **Administration → Familie → Invi
 | GitHub Actions | Valgfri keepalive-ping | Gratis for offentlige repos | ~10 sekunder hver 3. dag |
 | Open-Meteo | Vejrudsigt | Gratis til ikke-kommerciel brug, ingen nøgle | Få kald pr. besøg (caches 30 min) |
 
-Der er intet betalingskort tilknyttet, så intet kan begynde at koste penge af sig selv. Rammes en gratisgrænse mod forventning, holder tjenesten op med at svare; den sender ikke en regning. Den eneste mulige udgift er et eget domæne, hvis I vælger det senere.
+Der er intet betalingskort tilknyttet, så intet kan begynde at koste penge af sig selv. Rammes en gratisgrænse mod forventning, holder tjenesten op med at svare; den sender ikke en regning. Den eneste udgift er domænet kolindbooking.dk, som betales én gang om året hos GoDaddy.
 
 ## Mails
 
@@ -239,16 +239,26 @@ Sådan skifter du et billede:
 
 App-ikonerne laves med `python3 dev/make-icons.py`. Farver og billedvalg pr. hus ligger i `js/properties.js` og `css/base.css` (`--mallorca`, `--odde`). Sidens navn står i `config.js` (`siteName`).
 
-## Eget domæne senere
+## Eget domæne
 
-Siden kan flyttes til fx `kolindbooking.dk` uden kodeændringer, fordi alle links bygges ud fra den adresse, siden åbnes på.
+Siden ligger på **kolindbooking.dk** (købt hos GoDaddy). Filen `CNAME` i repoet fortæller GitHub Pages, hvilket domæne siden hører til. Alle links bygges ud fra den adresse, siden åbnes på, så koden skal ikke ændres, hvis domænet skifter.
 
-1. Køb domænet hos en dansk registrator. Det er den eneste udgift i hele løsningen.
-2. Hos registratoren: opret fire **A-records** for `kolindbooking.dk` til `185.199.108.153`, `185.199.109.153`, `185.199.110.153` og `185.199.111.153`, og en **CNAME** for `www` til `<brugernavn>.github.io`.
-3. GitHub: **Settings → Pages → Custom domain** → `kolindbooking.dk` → Save. Slå **Enforce HTTPS** til, når certifikatet er klar (gratis, fornyes automatisk).
-4. Ret `og:image` i `index.html` til den nye adresse.
+**DNS hos GoDaddy** (Domæner → kolindbooking.dk → DNS):
 
-Login gemmes pr. adresse, så alle skal logge ind igen én gang efter skiftet. Invitationslinks, der allerede er sendt med den gamle adresse, virker ikke længere; lav nye.
+| Type | Navn | Værdi |
+|---|---|---|
+| A | `@` | `185.199.108.153` |
+| A | `@` | `185.199.109.153` |
+| A | `@` | `185.199.110.153` |
+| A | `@` | `185.199.111.153` |
+| AAAA (valgfri) | `@` | `2606:50c0:8000::153`, `…8001::153`, `…8002::153`, `…8003::153` |
+| CNAME | `www` | `maurits2905.github.io` |
+
+GoDaddys egen A-record for `@` ("Parked" eller deres hjemmeside) skal slettes, og videresendelse skal være slået fra.
+
+**GitHub:** Settings → Pages → Custom domain viser `kolindbooking.dk`. Når DNS-tjekket er grønt, så sæt flueben ved **Enforce HTTPS**. Certifikatet er gratis og fornyes automatisk.
+
+Den gamle adresse (`…github.io/kolind-booking/`) sender videre til det nye domæne. Login gemmes pr. adresse, så alle skal logge ind én gang efter skiftet.
 
 ## Backup
 
