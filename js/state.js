@@ -1,7 +1,7 @@
 // Small shared app state with change notifications.
 
 import { api } from './api.js';
-import { addMonths, startOfMonth, today, min, max, diffDays } from './dates.js';
+import { addMonths, startOfMonth, today, min, max } from './dates.js';
 
 export const state = {
   session: null,
@@ -58,9 +58,19 @@ export function property(id) {
 
 const FRESH_MS = 45_000;
 
+// Covers every month the calendars let you browse to (24 months ahead).
 function defaultWindow() {
   const base = startOfMonth(today());
-  return { from: addMonths(base, -2), to: addMonths(base, 16) };
+  return { from: addMonths(base, -2), to: addMonths(base, 25) };
+}
+
+// get_calendar accepts at most 800 days per call, so longer ranges are fetched
+// in pieces. A stay that crosses a seam is kept from the piece it starts in.
+async function fetchCalendar(from, to) {
+  const seams = [from];
+  while (seams[seams.length - 1] < to) seams.push(min(addMonths(seams[seams.length - 1], 24), to));
+  const parts = await Promise.all(seams.slice(0, -1).map((a, i) => api.calendar(a, seams[i + 1])));
+  return parts.flatMap((part, i) => (i === 0 ? part : part.filter((e) => e.start_date >= seams[i])));
 }
 
 // Returns calendar entries covering [from, to). Data is cached for a short while
@@ -71,13 +81,9 @@ export async function calendarEntries(from, to, { force = false } = {}) {
   if (!force && covered && Date.now() - c.at < FRESH_MS) return c.entries;
 
   const win = defaultWindow();
-  let f = min(from, win.from);
-  let t = max(to, win.to);
-  if (diffDays(f, t) > 790) {
-    f = addMonths(startOfMonth(from), -1);
-    t = addMonths(startOfMonth(from), 18);
-  }
-  const entries = await api.calendar(f, t);
+  const f = min(from, win.from);
+  const t = max(to, win.to);
+  const entries = await fetchCalendar(f, t);
   state.calendar = { from: f, to: t, entries, at: Date.now() };
   return entries;
 }
