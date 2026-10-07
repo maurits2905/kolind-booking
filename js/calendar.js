@@ -49,6 +49,10 @@ export function createCalendar(root, options) {
   let taken = new Set();
   let hintTimer = null;
 
+  // Every listener is tied to this signal, so destroy() removes them all; the
+  // host element is reused when a view switches house.
+  const listeners = new AbortController();
+  const { signal } = listeners;
   root.classList.add('cal');
   root.dataset.mode = o.mode;
   mount(
@@ -382,7 +386,7 @@ export function createCalendar(root, options) {
       focusDate = day.dataset.date;
       pick(day.dataset.date);
     }
-  });
+  }, { signal });
 
   monthsEl.addEventListener('pointerover', (e) => {
     if (e.pointerType !== 'mouse' || !o.selectable || !sel.start || sel.end) return;
@@ -392,13 +396,13 @@ export function createCalendar(root, options) {
       hoverDate = d;
       paint();
     }
-  });
+  }, { signal });
   monthsEl.addEventListener('pointerleave', () => {
     if (hoverDate) {
       hoverDate = null;
       paint();
     }
-  });
+  }, { signal });
 
   // Keyboard: arrows move day, PageUp/PageDown month, Home/End week.
   monthsEl.addEventListener('keydown', (e) => {
@@ -415,7 +419,7 @@ export function createCalendar(root, options) {
     if (!target) return;
     e.preventDefault();
     focusDay(target);
-  });
+  }, { signal });
 
   function focusDay(date) {
     const first = o.month;
@@ -438,7 +442,7 @@ export function createCalendar(root, options) {
       const t = e.touches[0];
       touch = { x: t.clientX, y: t.clientY, at: Date.now() };
     },
-    { passive: true },
+    { passive: true, signal },
   );
   monthsEl.addEventListener(
     'touchend',
@@ -450,7 +454,7 @@ export function createCalendar(root, options) {
       if (Math.abs(dx) > 60 && Math.abs(dy) < 45 && Date.now() - touch.at < 600) go(dx < 0 ? 1 : -1);
       touch = null;
     },
-    { passive: true },
+    { passive: true, signal },
   );
 
   let lastWidth = 0;
@@ -490,6 +494,7 @@ export function createCalendar(root, options) {
     month: () => o.month,
     destroy() {
       ro.disconnect();
+      listeners.abort();
     },
   };
   render();

@@ -149,6 +149,14 @@ export function footer() {
           </nav>`
         : html`<nav><a href="#/login">Log ind</a></nav>`}
     </div>
+    ${config.credit?.name
+      ? html`<div class="container footer-credit">
+          <span>© ${new Date().getFullYear()} ${config.siteName}</span>
+          <span>Designet og udviklet af ${config.credit.url
+            ? html`<a href="${config.credit.url}" target="_blank" rel="noopener">${config.credit.name}${icon('linkedin')}</a>`
+            : config.credit.name}</span>
+        </div>`
+      : ''}
   </footer>`;
 }
 

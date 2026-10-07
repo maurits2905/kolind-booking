@@ -85,7 +85,7 @@ async function createGuestLinkDialog(onCreated) {
       <p class="muted">Send linket til venner, der vil låne et af husene. De kan se ledige datoer (uden navne) og sende en forespørgsel, som ${config.adminNames} godkender.</p>
       <div class="field">
         <label class="label" for="${ids.label}">Hvem er linket til?</label>
-        <input class="input" id="${ids.label}" name="label" maxlength="80" placeholder="Fx Peter og Anne" required autofocus>
+        <input class="input" id="${ids.label}" name="label" maxlength="80" placeholder="Fx Peter og Lise" required autofocus>
       </div>
       <fieldset class="fieldset">
         <legend class="label">Hvilket hus?</legend>
@@ -189,7 +189,7 @@ export default {
                 : tab === 'gaester'
                   ? html`<div class="guest-intro card card-pad">
                         <div><h2 class="h4">Lån huset ud til venner</h2>
-                        <p class="small muted">Lav et personligt link, som dine venner kan bruge til at se ledige datoer og sende en forespørgsel. De ser aldrig, hvem der ellers bor i husene.</p></div>
+                        <p class="small muted">Lav et personligt link, som dine venner kan bruge til at se ledige datoer og sende en forespørgsel. De kan ikke se, hvem der ellers har booket husene.</p></div>
                         <button type="button" class="btn btn-primary" data-new-link>${icon('plus')}Nyt gæstelink</button>
                       </div>
                       ${guestLinks

@@ -274,7 +274,7 @@ export const guestStatus = {
       html`<div class="page guest-page">
         <div class="container container-narrow">
           ${r.query.ny
-            ? html`<div class="notice notice-ok guest-saved">${icon('check')}<span><strong>Tak! Forespørgslen er sendt.</strong> Gem linket til denne side, så kan I følge svaret. Det er også gemt i denne browser.</span></div>`
+            ? html`<div class="notice notice-ok guest-saved">${icon('check')}<span><strong>Tak! Forespørgslen er sendt.</strong> Svaret kommer på denne side.</span></div>`
             : ''}
           <article class="status-card card">
             <div class="status-media"><img src="${st.image}" alt="" style="object-position:${st.focus}"></div>
@@ -287,7 +287,12 @@ export const guestStatus = {
               <p class="lede">${s.person_name}, ${s.property_name} · ${D.fmtRange(s.start_date, s.end_date)} · ${D.nightsLabel(s.nights)} · ${D.guestsLabel(s.guests)}</p>
               ${s.status === 'pending' ? html`<p class="muted" style="margin-top:12px">${cap(config.adminNames)} har fået jeres forespørgsel og svarer her. Kig forbi igen senere.</p>` : ''}
               ${s.decision_note ? html`<blockquote class="quote quote-reply" style="margin-top:16px"><cite>${cap(config.adminNames)}</cite>${s.decision_note}</blockquote>` : ''}
-              <div class="copy-field" style="margin-top:20px"><code>${statusLink}</code><button type="button" class="btn btn-sm" data-copy>${icon('copy')}Kopiér link</button></div>
+              <div class="status-link">
+                <h2 class="h4">${icon('bookmark')}Gem linket til denne side</h2>
+                <p class="small muted">Det er jeres personlige side for opholdet. Her ser I svaret, og når opholdet er godkendt, finder I også adresse, nøgle og Wi-Fi her. Send linket til jer selv, eller gem siden som bogmærke. Linket er kun til jer, så del det ikke med andre.</p>
+                <div class="copy-field"><code>${statusLink}</code><button type="button" class="btn btn-sm" data-copy>${icon('copy')}Kopiér</button></div>
+                ${navigator.share ? html`<button type="button" class="btn btn-sm btn-ghost" data-share-status>${icon('share')}Send linket til mig selv</button>` : ''}
+              </div>
             </div>
           </article>
 
@@ -319,6 +324,13 @@ export const guestStatus = {
     );
 
     $('[data-copy]', el).addEventListener('click', () => copyText(statusLink));
+    $('[data-share-status]', el)?.addEventListener('click', async () => {
+      try {
+        await navigator.share({ title: `${s.property_name}: vores forespørgsel`, text: 'Link til vores forespørgsel og praktisk info:', url: statusLink });
+      } catch {
+        /* cancelled */
+      }
+    });
     $('[data-ics]', el)?.addEventListener('click', () => downloadIcs(booking, propForIcs));
     $('[data-cancel]', el)?.addEventListener('click', async () => {
       const ok = await confirmDialog({ title: 'Annullér forespørgslen?', message: 'Perioden bliver ledig for andre.', confirmLabel: 'Annullér', cancelLabel: 'Behold', danger: true });

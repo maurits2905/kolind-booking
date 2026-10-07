@@ -325,6 +325,14 @@ function memberDialog(m, onDone) {
         <p class="small muted">Lav et link, hvor ${firstName(m.full_name)} selv vælger en ny adgangskode.</p>
         <button type="button" class="btn btn-sm" data-reset style="margin-top:10px">${icon('key')}Lav nulstillingslink</button>
       </div>
+      ${m.is_me
+        ? ''
+        : html`<hr class="divider">
+          <div>
+            <strong>Slet ${firstName(m.full_name)}</strong>
+            <p class="small muted">Sletter kontoen og ${firstName(m.full_name)}s egne ophold og forespørgsler. Vil du bevare historikken, så slå Aktiv fra i stedet.</p>
+            <button type="button" class="btn btn-sm btn-danger-quiet" data-delete-member style="margin-top:10px">${icon('trash')}Slet person</button>
+          </div>`}
       <div class="form-error" role="alert"></div>
     </form>`,
     foot: html`<button type="button" class="btn" data-cancel>Fortryd</button><button type="button" class="btn btn-primary" data-save>Gem</button>`,
@@ -342,6 +350,24 @@ function memberDialog(m, onDone) {
         message: `Hej ${firstName(m.full_name)}! Her kan du vælge en ny adgangskode til ${config.siteName}:`,
         mail: inviteDraft(m, url, { reset: true }),
       });
+    } catch (err) {
+      toastError(err);
+    }
+  });
+  $('[data-delete-member]', sheet.body)?.addEventListener('click', async () => {
+    const ok = await confirmDialog({
+      title: `Slet ${m.full_name}?`,
+      message: `Kontoen og alle ${firstName(m.full_name)}s egne ophold og forespørgsler slettes for altid. Det kan ikke fortrydes.`,
+      confirmLabel: 'Slet for altid',
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await admin.deleteMember(m.id);
+      invalidateCalendar();
+      sheet.close();
+      toast(`${m.full_name} er slettet.`, { type: 'success' });
+      onDone?.();
     } catch (err) {
       toastError(err);
     }

@@ -1335,18 +1335,24 @@ button.agenda-item:hover {
 /* ---------- Mine ---------- */
 
 .booking-card {
+  position: relative;
   display: grid;
   grid-template-columns: 1fr;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-l);
-  overflow: hidden;
   box-shadow: var(--shadow-1);
+}
+/* No overflow: hidden on the card, so the "Tilføj til kalender" menu can
+   extend below it; the photo rounds its own corners instead. */
+.booking-card:has(.menu:not([hidden])) {
+  z-index: 5;
 }
 .booking-card-media {
   display: block;
   height: 150px;
   overflow: hidden;
+  border-radius: calc(var(--radius-l) - 1px) calc(var(--radius-l) - 1px) 0 0;
 }
 .booking-card-media img {
   width: 100%;
@@ -1391,6 +1397,7 @@ button.agenda-item:hover {
   .booking-card-media {
     height: 100%;
     min-height: 180px;
+    border-radius: calc(var(--radius-l) - 1px) 0 0 calc(var(--radius-l) - 1px);
   }
   .booking-card.is-past {
     grid-template-columns: 120px 1fr;

@@ -420,4 +420,33 @@ begin
 end $$;
 reset role;
 
+-- Deleting a person: admins only, never yourself; removes account, profile and
+-- the person's own bookings, and the email can be invited again.
+set role authenticated;
+select t.claims((select id from ids where name = 'carl'));
+select t.fails($$select public.admin_delete_member((select id from ids where name = 'dorte'))$$, 'administratorer');
+reset role;
+set role authenticated;
+select t.claims((select id from ids where name = 'anne'));
+select t.fails($$select public.admin_delete_member((select id from ids where name = 'anne'))$$, 'dig selv');
+reset role;
+do $$ begin assert exists (select 1 from public.bookings where user_id = (select id from ids where name = 'dorte')); end $$;
+set role authenticated;
+select t.claims((select id from ids where name = 'anne'));
+select public.admin_delete_member((select id from ids where name = 'dorte'));
+reset role;
+do $$
+declare d uuid := (select id from ids where name = 'dorte');
+begin
+  assert not exists (select 1 from public.profiles where id = d);
+  assert not exists (select 1 from auth.users where id = d);
+  assert not exists (select 1 from public.bookings where user_id = d);
+  assert not exists (select 1 from public.bookings where person_name = 'Dorte' and source = 'member');
+end $$;
+set role authenticated;
+select t.claims((select id from ids where name = 'anne'));
+select public.admin_create_invitation('dorte@example.com', 'Dorte', 'member');
+reset role;
+select t.ok('admin deletes a person completely and can invite the email again');
+
 select t.ok('ALL TESTS PASSED');

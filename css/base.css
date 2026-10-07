@@ -585,6 +585,27 @@ body.has-tabbar {
 .site-footer a:hover {
   color: var(--ink);
 }
+.footer-credit {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px 24px;
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  font-size: 0.8rem;
+}
+.footer-credit a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-2);
+  font-weight: 600;
+}
+.footer-credit svg {
+  width: 15px;
+  height: 15px;
+}
 
 @media (prefers-reduced-motion: reduce) {
   *,

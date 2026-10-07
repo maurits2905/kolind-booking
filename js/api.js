@@ -190,6 +190,7 @@ export const admin = {
       p_role: m.role,
       p_active: m.active,
     }),
+  deleteMember: (userId) => rpc('admin_delete_member', { p_user_id: userId }),
   passwordReset: (userId) => rpc('admin_create_password_reset', { p_user_id: userId }),
   updateProperty: (id, data) => rpc('admin_update_property', { p_id: id, p_data: data }),
   updateAccess: (id, a) =>

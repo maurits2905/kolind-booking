@@ -218,6 +218,8 @@ where email = 'person@example.com';
 
 **Fjern adgang:** Administration → Familie → personen → slå **Aktiv** fra. Historikken bevares.
 
+**Slet en person helt:** Administration → Familie → personen → **Slet person**. Kontoen og personens egne ophold og forespørgsler slettes; gæsteophold fra personens gæstelinks bliver liggende. Emailen kan inviteres igen bagefter.
+
 ## Billeder og tekster
 
 **Tekster** (beskrivelse, adresse, check-in/-ud, husregler, kontakt, Wi-Fi og adgang) rettes i appen under **Administration → Boliger**. Wi-Fi og adgangsoplysninger vises kun for personer med et godkendt, kommende eller igangværende ophold.

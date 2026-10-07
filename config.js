@@ -13,6 +13,8 @@ export default {
 
   siteName: 'Kolind Booking',
   siteTagline: 'Familiens ferieboliger',
+  // Vises nederst i footeren.
+  credit: { name: 'Maurits Puggaard', url: 'https://www.linkedin.com/in/maurits-puggaard-4095351b0/' },
   // Administratorernes navne ("X og Y godkender …") hentes fra databasen efter
   // login, så de ikke står i det offentlige repo. Dette bruges før login.
   adminNames: 'administratorerne',

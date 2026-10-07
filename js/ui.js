@@ -46,6 +46,66 @@ export function toastError(err) {
 
 let openCount = 0;
 
+// Phone sheets can be dragged down to close, from the grip/title or from the
+// content when it is scrolled to the top.
+function swipeToClose(dlg, bodyEl, close) {
+  const phone = matchMedia('(max-width: 699px)');
+  let drag = null;
+  const reset = () => {
+    dlg.style.transition = 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
+    dlg.style.transform = '';
+    drag = null;
+  };
+  dlg.addEventListener(
+    'touchstart',
+    (e) => {
+      if (!phone.matches || e.touches.length !== 1) return;
+      const t = e.target;
+      if (t.closest('input, textarea, select, .cal-months')) return;
+      const fromHead = Boolean(t.closest('.sheet-grip, .sheet-head'));
+      if (!fromHead && !(t.closest('.sheet-body') && bodyEl.scrollTop <= 0)) return;
+      drag = { x: e.touches[0].clientX, y: e.touches[0].clientY, at: performance.now(), dy: 0, fromHead, active: false };
+    },
+    { passive: true },
+  );
+  dlg.addEventListener(
+    'touchmove',
+    (e) => {
+      if (!drag) return;
+      const dx = e.touches[0].clientX - drag.x;
+      const dy = e.touches[0].clientY - drag.y;
+      if (!drag.active) {
+        if (Math.abs(dy) < 8 && Math.abs(dx) < 8) return;
+        if (dy <= 0 || Math.abs(dx) > dy || (!drag.fromHead && bodyEl.scrollTop > 0)) {
+          drag = null;
+          return;
+        }
+        drag.active = true;
+        dlg.style.transition = 'none';
+      }
+      drag.dy = Math.max(0, dy);
+      dlg.style.transform = `translateY(${drag.dy}px)`;
+      e.preventDefault();
+    },
+    { passive: false },
+  );
+  const end = () => {
+    if (!drag) return;
+    if (!drag.active) {
+      drag = null;
+      return;
+    }
+    const speed = drag.dy / Math.max(1, performance.now() - drag.at);
+    if (drag.dy > Math.min(160, dlg.offsetHeight * 0.3) || (drag.dy > 50 && speed > 0.5)) {
+      drag = null;
+      dlg.style.transition = '';
+      close();
+    } else reset();
+  };
+  dlg.addEventListener('touchend', end);
+  dlg.addEventListener('touchcancel', end);
+}
+
 export function openSheet({ title, body = '', foot = null, wide = false, onClose = null, className = '' }) {
   const dlg = document.createElement('dialog');
   const titleId = nextId('sheet-title');
@@ -99,10 +159,17 @@ export function openSheet({ title, body = '', foot = null, wide = false, onClose
 
   openCount += 1;
   document.documentElement.style.overflow = 'hidden';
+  // On touch screens a focused field opens the keyboard and scrolls the sheet,
+  // so fields only get focus when tapped there.
+  const touch = matchMedia('(hover: none) and (pointer: coarse)').matches;
+  if (touch) for (const f of dlg.querySelectorAll('[autofocus]')) f.removeAttribute('autofocus');
+  dlg.tabIndex = -1;
   dlg.showModal();
   const first = bodyEl.querySelector('[autofocus]');
   if (first) first.focus();
+  else if (touch) dlg.focus({ preventScroll: true });
   else $('.sheet-close', dlg).focus();
+  swipeToClose(dlg, bodyEl, () => close());
 
   return {
     el: dlg,
@@ -161,7 +228,8 @@ export function confirmDialog({
       result = { value: input ? sheet.body.querySelector('textarea').value.trim() : null };
       sheet.close();
     });
-    if (input) sheet.body.querySelector('textarea').focus();
+    if (input && !matchMedia('(hover: none) and (pointer: coarse)').matches) sheet.body.querySelector('textarea').focus();
+    else if (input) sheet.el.focus({ preventScroll: true });
     else sheet.foot.querySelector('[data-ok]').focus();
   });
 }

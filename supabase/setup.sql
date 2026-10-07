@@ -1023,6 +1023,44 @@ begin
   end if;
 end $$;
 
+-- Sletter en person helt: kontoen, profilen og personens egne ophold og
+-- forespørgsler (med historik). Gæsteophold fra personens gæstelinks bliver
+-- liggende. Vil man bevare historikken, deaktiverer man i stedet.
+create or replace function public.admin_delete_member(p_user_id uuid) returns void
+language plpgsql security definer set search_path = '' as $$
+declare
+  v_uid uuid := private.require_admin();
+  v_email text;
+begin
+  if p_user_id = v_uid then
+    raise exception 'Du kan ikke slette dig selv.';
+  end if;
+  select email into v_email from public.profiles where id = p_user_id;
+  if v_email is null then
+    raise exception 'Personen findes ikke.';
+  end if;
+
+  delete from public.booking_events
+  where booking_id in (select id from public.bookings where user_id = p_user_id);
+  delete from public.bookings where user_id = p_user_id;
+  delete from public.invitations where lower(email) = lower(v_email);
+
+  -- Kontoen fjernes, så emailen kan inviteres igen. Profil, nulstillingslinks og
+  -- gæstelinks følger med (on delete cascade). Skulle Supabase en dag nægte
+  -- adgang til auth.users, slettes profilen alene; uden profil er der ingen
+  -- adgang til noget.
+  begin
+    delete from auth.users where id = p_user_id;
+  exception when insufficient_privilege then
+    null;
+  end;
+  delete from public.profiles where id = p_user_id;
+
+  if not exists (select 1 from public.profiles where role = 'admin' and active) then
+    raise exception 'Der skal altid være mindst én administrator.';
+  end if;
+end $$;
+
 create or replace function public.admin_create_password_reset(p_user_id uuid) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare
@@ -1320,7 +1358,7 @@ declare
                            'admin_bookings', 'admin_booking_detail', 'admin_decide_booking',
                            'admin_save_booking', 'admin_delete_booking', 'admin_set_booking_note',
                            'admin_people', 'admin_create_invitation', 'admin_delete_invitation',
-                           'admin_update_member', 'admin_create_password_reset',
+                           'admin_update_member', 'admin_delete_member', 'admin_create_password_reset',
                            'admin_update_property', 'admin_update_property_access', 'admin_export'];
 begin
   for f in

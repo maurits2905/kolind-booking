@@ -728,6 +728,9 @@ dialog.sheet {
   display: flex;
   flex-direction: column;
 }
+dialog.sheet:focus {
+  outline: none;
+}
 dialog.sheet:not([open]) {
   display: none;
 }
@@ -1311,6 +1314,34 @@ body:not(.has-tabbar) .toasts {
   white-space: nowrap;
   font-size: 0.86rem;
   color: var(--ink-2);
+}
+
+.status-link {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  margin-top: 22px;
+  padding: 18px;
+  border-radius: var(--radius);
+  background: var(--paper);
+  border: 1px solid var(--line);
+}
+.status-link h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.status-link h2 svg {
+  width: 18px;
+  height: 18px;
+  color: var(--accent-2);
+}
+.status-link .copy-field {
+  min-width: 0;
+  background: var(--surface);
+}
+.status-link > .btn {
+  justify-self: start;
 }
 
 /* ---------- Success burst ---------- */
