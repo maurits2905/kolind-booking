@@ -191,6 +191,7 @@ export const admin = {
       p_active: m.active,
     }),
   deleteMember: (userId) => rpc('admin_delete_member', { p_user_id: userId }),
+  setSettings: ({ guestLinks }) => rpc('admin_set_settings', { p_guest_links: guestLinks }),
   passwordReset: (userId) => rpc('admin_create_password_reset', { p_user_id: userId }),
   updateProperty: (id, data) => rpc('admin_update_property', { p_id: id, p_data: data }),
   updateAccess: (id, a) =>
@@ -225,4 +226,50 @@ export const links = {
     }),
   guestStatus: (statusToken) => rpc('guest_booking_status', { p_status_token: statusToken }),
   guestCancel: (statusToken) => rpc('guest_cancel_booking', { p_status_token: statusToken }),
+};
+
+// ---------- Photos (Supabase Storage, private bucket "photos") ----------
+
+function storageError(error) {
+  const msg = error?.message || '';
+  if (looksOffline(msg)) return new ApiError(UNREACHABLE, { unreachable: true });
+  if (/maximum allowed size|exceeded/i.test(msg)) return new ApiError('Billedet er for stort (højst 3 MB efter komprimering).');
+  if (/mime type/i.test(msg)) return new ApiError('Filtypen kan ikke bruges.');
+  if (/row-level security|unauthorized|not allowed/i.test(msg)) return new ApiError('Kun administratorer kan uploade billeder.');
+  if (/bucket not found/i.test(msg)) return new ApiError('Billedlageret er ikke sat op. Kør supabase/setup.sql igen (se README).');
+  return new ApiError(msg || 'Billedet kunne ikke gemmes.');
+}
+
+const signedCache = new Map(); // path -> { url, until }
+
+export const photos = {
+  list: (propertyId = null) => rpc('list_photos', { p_property_id: propertyId }),
+  usage: () => rpc('admin_photo_usage'),
+  add: (p) =>
+    rpc('admin_add_photo', {
+      p_property_id: p.propertyId, p_path: p.path, p_thumb_path: p.thumbPath,
+      p_width: p.width, p_height: p.height, p_bytes: p.bytes,
+    }),
+  remove: (id) => rpc('admin_delete_photo', { p_id: id }),
+  order: (propertyId, ids) => rpc('admin_order_photos', { p_property_id: propertyId, p_ids: ids }),
+  async upload(path, blob) {
+    const body = new Uint8Array(await blob.arrayBuffer());
+    const { error } = await supa().storage.from('photos').upload(path, body, { contentType: blob.type, cacheControl: '31536000', upsert: false });
+    if (error) throw storageError(error);
+  },
+  async removeFiles(paths) {
+    const { error } = await supa().storage.from('photos').remove(paths);
+    if (error) throw storageError(error);
+  },
+  // Signed URLs (private bucket), cached for most of their 6-hour lifetime.
+  async urls(paths) {
+    const now = Date.now();
+    const missing = paths.filter((p) => !(signedCache.get(p)?.until > now));
+    if (missing.length) {
+      const { data, error } = await supa().storage.from('photos').createSignedUrls(missing, 6 * 3600);
+      if (error) throw storageError(error);
+      for (const d of data || []) if (d.signedUrl) signedCache.set(d.path, { url: d.signedUrl, until: now + 5 * 3600 * 1000 });
+    }
+    return Object.fromEntries(paths.map((p) => [p, signedCache.get(p)?.url || null]));
+  },
 };

@@ -204,7 +204,7 @@ Der skal altid være mindst én aktiv administrator. Databasen forhindrer, at de
 
 **Nyt familiemedlem:** Administration → Familie → **Inviter**. Skriv navn og email, og send linket med **Send som mail** eller SMS. Linket virker i 30 dage og kan bruges én gang. Ingen kan oprette en konto uden et link.
 
-**Venner og gæster:** Et familiemedlem laver et gæstelink under **Mine ophold → Gæstelinks** (fx "Peter og Lise"). Gæsten åbner linket uden at logge ind, ser ledige datoer (kun "Optaget"/"Forespurgt", aldrig navne) og sender en forespørgsel med navn og email. Gæsten får et statuslink, hvor svaret, adressen, praktisk info og Wi-Fi vises, når opholdet er godkendt. Et gæstelink kan bruges til 3 forespørgsler og udløber efter valgfri periode.
+**Venner og gæster** (slået fra som standard; slås til under Administration → Familie → Gæstelinks til venner): Et familiemedlem laver et gæstelink under **Mine ophold → Gæstelinks** (fx "Peter og Lise"). Gæsten åbner linket uden at logge ind, ser ledige datoer (kun "Optaget"/"Forespurgt", aldrig navne) og sender en forespørgsel med navn og email. Gæsten får et statuslink, hvor svaret, adressen, praktisk info og Wi-Fi vises, når opholdet er godkendt. Et gæstelink kan bruges til 3 forespørgsler og udløber efter valgfri periode.
 
 **Glemt adgangskode:** Administration → Familie → personen → **Lav nulstillingslink**, og send det som mail. Man kan også selv skifte adgangskode under **Profil**.
 
@@ -224,7 +224,11 @@ where email = 'person@example.com';
 
 **Tekster** (beskrivelse, adresse, check-in/-ud, husregler, kontakt, Wi-Fi og adgang) rettes i appen under **Administration → Boliger**. Wi-Fi og adgangsoplysninger vises kun for personer med et godkendt, kommende eller igangværende ophold.
 
-**Billeder** ligger i repoet:
+**Galleri:** Administration → Boliger → **Billeder** → **Tilføj billeder**. Vælg flere på én gang. Browseren gør dem små før upload (WebP, højst 1800 px, cirka 250 KB pr. billede plus en miniature), så pladsen rækker til tusindvis af billeder. Billederne ligger i en privat bucket i Supabase Storage og kan kun ses af indloggede familiemedlemmer. Rækkefølgen ændres med pilene, og der er en papirkurv på hvert billede.
+
+Grænser, der håndhæves af databasen: højst 40 billeder pr. hus, højst 3 MB pr. fil og 800 MB i alt (Supabase Free har 1 GB lager). Forbruget står over billederne.
+
+**Hovedbillederne** (forsiden og toppen af husets side) ligger i repoet:
 
 | Fil | Bruges til |
 |---|---|

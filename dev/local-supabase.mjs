@@ -1,7 +1,7 @@
 // Local stand-in for Supabase, for development and end-to-end tests only.
 //
 // Serves the app and implements the small part of the Supabase API the app
-// uses (email/password auth + RPC) on top of a local Postgres that has
+// uses (email/password auth + RPC + photo storage) on top of a local Postgres that has
 // dev/supabase-stub.sql and supabase/setup.sql loaded.
 //
 //   cd dev && npm install && node local-supabase.mjs      → http://localhost:8787
@@ -211,6 +211,84 @@ async function handleRest(req, res, url) {
   }
 }
 
+// ---------- storage (Storage API subset: upload, signed URLs, delete) ----------
+const STORE = path.join(ROOT, 'dev', '.storage');
+async function asRole(claims, fn) {
+  const client = await pool.connect();
+  try {
+    await client.query('begin');
+    await client.query(`set local role ${claims ? 'authenticated' : 'anon'}`);
+    await client.query(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify(claims || { role: 'anon' })]);
+    const out = await fn(client);
+    await client.query('commit');
+    return out;
+  } catch (e) {
+    await client.query('rollback').catch(() => {});
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+async function rawBody(req) {
+  const chunks = [];
+  for await (const c of req) chunks.push(c);
+  return Buffer.concat(chunks);
+}
+const storageError = (res, status, msg) => send(res, status, { statusCode: String(status), error: 'Error', message: msg });
+async function handleStorage(req, res, url) {
+  const route = decodeURIComponent(url.pathname.replace('/storage/v1', ''));
+  const claims = bearerClaims(req);
+  let m = route.match(/^\/object\/sign\/([a-z0-9_-]+)\/(.+)$/);
+  if (m && req.method === 'GET') {
+    const t = verifyJwt(url.searchParams.get('token'));
+    if (!t || t.url !== `${m[1]}/${m[2]}`) return storageError(res, 400, 'Invalid signature');
+    try {
+      const data = await fs.readFile(path.join(STORE, m[1], m[2]));
+      return send(res, 200, data, { 'content-type': m[2].endsWith('.jpg') ? 'image/jpeg' : 'image/webp', 'cache-control': 'max-age=3600' });
+    } catch {
+      return storageError(res, 404, 'Object not found');
+    }
+  }
+  m = route.match(/^\/object\/sign\/([a-z0-9_-]+)$/);
+  if (m && req.method === 'POST') {
+    const { expiresIn = 3600, paths = [] } = await readBody(req);
+    const visible = await asRole(claims, async (c) =>
+      (await c.query('select name from storage.objects where bucket_id = $1 and name = any($2)', [m[1], paths])).rows.map((r) => r.name));
+    const exp = Math.floor(Date.now() / 1000) + Number(expiresIn);
+    return send(res, 200, paths.map((p) => visible.includes(p)
+      ? { path: p, signedURL: `/object/sign/${m[1]}/${p}?token=${signJwt({ url: `${m[1]}/${p}`, exp })}`, error: null }
+      : { path: p, signedURL: null, error: 'Either the object does not exist or you do not have access to it' }));
+  }
+  m = route.match(/^\/object\/([a-z0-9_-]+)\/(.+)$/);
+  if (m && req.method === 'POST') {
+    const body = await rawBody(req);
+    const { rows: [bucket] } = await pool.query('select * from storage.buckets where id = $1', [m[1]]);
+    if (!bucket) return storageError(res, 404, 'Bucket not found');
+    if (bucket.file_size_limit && body.length > bucket.file_size_limit) return storageError(res, 413, 'The object exceeded the maximum allowed size');
+    const type = (req.headers['content-type'] || '').split(';')[0];
+    if (bucket.allowed_mime_types && !bucket.allowed_mime_types.includes(type)) return storageError(res, 415, `mime type ${type} is not supported`);
+    try {
+      const row = await asRole(claims, async (c) =>
+        (await c.query('insert into storage.objects (bucket_id, name, owner) values ($1, $2, auth.uid()) returning id', [m[1], m[2]])).rows[0]);
+      await fs.mkdir(path.dirname(path.join(STORE, m[1], m[2])), { recursive: true });
+      await fs.writeFile(path.join(STORE, m[1], m[2]), body);
+      return send(res, 200, { Key: `${m[1]}/${m[2]}`, Id: row.id });
+    } catch (e) {
+      if (e.code === '23505') return storageError(res, 409, 'The resource already exists');
+      return storageError(res, 403, 'new row violates row-level security policy');
+    }
+  }
+  m = route.match(/^\/object\/([a-z0-9_-]+)$/);
+  if (m && req.method === 'DELETE') {
+    const { prefixes = [] } = await readBody(req);
+    const gone = await asRole(claims, async (c) =>
+      (await c.query('delete from storage.objects where bucket_id = $1 and name = any($2) returning name', [m[1], prefixes])).rows);
+    for (const g of gone) await fs.rm(path.join(STORE, m[1], g.name), { force: true });
+    return send(res, 200, gone.map((g) => ({ name: g.name, bucket_id: m[1] })));
+  }
+  return storageError(res, 404, `Not implemented in local emulator: ${req.method} ${route}`);
+}
+
 // ---------- static files ----------
 async function handleStatic(req, res, url) {
   let rel = decodeURIComponent(url.pathname);
@@ -237,6 +315,7 @@ http.createServer(async (req, res) => {
     if (req.method === 'OPTIONS') return send(res, 204);
     if (url.pathname.startsWith('/auth/v1/')) return await handleAuth(req, res, url);
     if (url.pathname.startsWith('/rest/v1/')) return await handleRest(req, res, url);
+    if (url.pathname.startsWith('/storage/v1/')) return await handleStorage(req, res, url);
     return await handleStatic(req, res, url);
   } catch (e) {
     console.error(e);

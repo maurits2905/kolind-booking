@@ -5,6 +5,7 @@ import * as D from '../dates.js';
 import { admin, api } from '../api.js';
 import { state, firstName, calendarEntries, loadProperties, invalidateCalendar, refreshMeQuietly } from '../state.js';
 import { style } from '../properties.js';
+import { renderPhotoAdmin } from '../gallery.js';
 import { nowStatus } from '../availability.js';
 import {
   statusChip, propertyTag, toast, toastError, busy, errorState, emptyState, skeletonList, openSheet,
@@ -445,6 +446,11 @@ async function renderFamily(host, ctx) {
           : html`<p class="small muted">Ingen ubrugte invitationer.</p>`}
       </section>
       <section class="admin-section">
+        <h2 class="h3">Gæstelinks til venner</h2>
+        <label class="switch"><span><strong>Familien må låne husene ud via gæstelinks</strong><span class="hint" style="display:block">Når det er slået fra, kan ingen lave nye links, og eksisterende links holder op med at virke.</span></span>
+          <input type="checkbox" data-guest-toggle ${state.me?.guest_links ? 'checked' : ''}></label>
+      </section>
+      <section class="admin-section" ${state.me?.guest_links || people.guest_links.length ? '' : 'hidden'}>
         <h2 class="h3">Aktive gæstelinks <span class="count-pill">${people.guest_links.length}</span></h2>
         ${people.guest_links.length
           ? html`<ul class="people-list">
@@ -460,6 +466,18 @@ async function renderFamily(host, ctx) {
       </section>`,
   );
   $('[data-invite]', host).addEventListener('click', () => inviteDialog(reload));
+  $('[data-guest-toggle]', host).addEventListener('change', async (e) => {
+    const on = e.currentTarget.checked;
+    try {
+      await admin.setSettings({ guestLinks: on });
+      await refreshMeQuietly();
+      toast(on ? 'Gæstelinks er slået til.' : 'Gæstelinks er slået fra.', { type: 'success' });
+      reload();
+    } catch (err) {
+      e.currentTarget.checked = !on;
+      toastError(err);
+    }
+  });
   for (const b of $$('[data-member]', host)) {
     b.addEventListener('click', () => memberDialog(people.members.find((m) => m.id === b.dataset.member), reload));
   }
@@ -550,6 +568,10 @@ async function renderProperties(host, ctx) {
           </div>
         </section>
         <section class="form-section">
+          <header><h2 class="h3">Billeder</h2><p class="small muted">Vises i galleriet på husets side, efter hovedbilledet. Billederne gøres automatisk mindre ved upload, så pladsen rækker langt. Kun familien kan se dem.</p></header>
+          <div class="photo-admin-host"><div class="skeleton" style="height:120px"></div></div>
+        </section>
+        <section class="form-section">
           <header><h2 class="h3">Wi-Fi og adgang</h2><p class="small muted">Vises kun for dem med et godkendt ophold, fra godkendelse til afrejse.</p></header>
           <div class="access-fields"><div class="skeleton" style="height:160px"></div></div>
         </section>
@@ -569,6 +591,8 @@ async function renderProperties(host, ctx) {
   );
 
   segmented($('[data-prop-switch]', host), (v) => navigate(`/admin/boliger?id=${v}`, { replace: true }));
+
+  renderPhotoAdmin($('.photo-admin-host', host), id);
 
   const accessHost = $('.access-fields', host);
   try {

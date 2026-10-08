@@ -192,6 +192,29 @@ create table if not exists public.booking_events (
 
 create index if not exists booking_events_booking_idx on public.booking_events (booking_id, at);
 
+-- Indstillinger for hele siden (præcis én række).
+create table if not exists public.settings (
+  id           boolean primary key default true check (id),
+  guest_links  boolean not null default false   -- må familien låne husene ud via gæstelinks?
+);
+insert into public.settings (id) values (true) on conflict (id) do nothing;
+
+-- Billeder af husene. Selve filerne ligger i Supabase Storage (bucket "photos",
+-- privat); tabellen holder rækkefølge og størrelse, så pladsen kan styres.
+create table if not exists public.property_photos (
+  id           uuid primary key default gen_random_uuid(),
+  property_id  text not null references public.properties(id) on delete cascade,
+  path         text not null unique check (path ~ '^[a-z0-9_-]+/[0-9a-f-]{36}\.(webp|jpg)$'),
+  thumb_path   text not null unique check (thumb_path ~ '^[a-z0-9_-]+/[0-9a-f-]{36}-thumb\.(webp|jpg)$'),
+  width        int check (width between 1 and 4000),
+  height       int check (height between 1 and 4000),
+  bytes        int not null check (bytes between 1 and 6291456),
+  sort_order   int not null default 0,
+  created_at   timestamptz not null default now(),
+  created_by   uuid references public.profiles(id) on delete set null
+);
+create index if not exists property_photos_property_idx on public.property_photos (property_id, sort_order);
+
 -- ---------------------------------------------------------------------
 --  Rolle-hjælpere (bruges af RLS og funktioner)
 -- ---------------------------------------------------------------------
@@ -406,6 +429,8 @@ alter table public.guest_links     enable row level security;
 alter table public.bookings        enable row level security;
 alter table public.booking_notes   enable row level security;
 alter table public.booking_events  enable row level security;
+alter table public.settings        enable row level security;
+alter table public.property_photos enable row level security;
 
 drop policy if exists profiles_read on public.profiles;
 create policy profiles_read on public.profiles for select to authenticated
@@ -470,6 +495,7 @@ language sql stable security definer set search_path = '' as $$
   select jsonb_build_object(
     'id', p.id, 'full_name', p.full_name, 'email', p.email, 'phone', p.phone,
     'role', p.role, 'active', p.active,
+    'guest_links', (select guest_links from public.settings),
     'pending_count', case when p.role = 'admin' and p.active then (
       select count(*) from public.bookings b
       where b.status = 'pending' and b.end_date >= private.today()) end)
@@ -677,6 +703,9 @@ declare
   v_uid uuid := private.require_member();
   v_row public.guest_links;
 begin
+  if not (select guest_links from public.settings) then
+    raise exception 'Gæstelinks er slået fra.';
+  end if;
   if private.clean(p_label, 80) is null then
     raise exception 'Skriv hvem linket er til.';
   end if;
@@ -1061,6 +1090,93 @@ begin
   end if;
 end $$;
 
+create or replace function public.admin_set_settings(p_guest_links boolean) returns void
+language plpgsql security definer set search_path = '' as $$
+declare
+  v_uid uuid := private.require_admin();
+begin
+  update public.settings set guest_links = coalesce(p_guest_links, guest_links) where id;
+end $$;
+
+-- ---------- Billeder ----------
+
+create or replace function public.list_photos(p_property_id text default null) returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare
+  v_uid uuid := private.require_member();
+begin
+  return coalesce((
+    select jsonb_agg(jsonb_build_object(
+      'id', f.id, 'property_id', f.property_id, 'path', f.path, 'thumb_path', f.thumb_path,
+      'width', f.width, 'height', f.height, 'bytes', f.bytes) order by f.property_id, f.sort_order, f.created_at)
+    from public.property_photos f
+    where p_property_id is null or f.property_id = p_property_id), '[]'::jsonb);
+end $$;
+
+-- Højst 40 billeder pr. hus og 800 MB i alt (Supabase Free har 1 GB lager).
+create or replace function public.admin_add_photo(
+  p_property_id text, p_path text, p_thumb_path text, p_width int, p_height int, p_bytes int
+) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  v_uid uuid := private.require_admin();
+  v_row public.property_photos;
+begin
+  if not exists (select 1 from public.properties where id = p_property_id) then
+    raise exception 'Boligen findes ikke.';
+  end if;
+  if split_part(p_path, '/', 1) <> p_property_id or split_part(p_thumb_path, '/', 1) <> p_property_id then
+    raise exception 'Billedet hører ikke til denne bolig.';
+  end if;
+  if (select count(*) from public.property_photos where property_id = p_property_id) >= 40 then
+    raise exception 'Der kan højst være 40 billeder pr. bolig. Slet nogle først.';
+  end if;
+  if (select coalesce(sum(bytes), 0) from public.property_photos) + coalesce(p_bytes, 0) > 800 * 1024 * 1024 then
+    raise exception 'Billedlageret er fuldt (800 MB). Slet nogle billeder først.';
+  end if;
+  insert into public.property_photos (property_id, path, thumb_path, width, height, bytes, sort_order, created_by)
+  values (p_property_id, p_path, p_thumb_path, p_width, p_height, p_bytes,
+          (select coalesce(max(sort_order), 0) + 1 from public.property_photos where property_id = p_property_id), v_uid)
+  returning * into v_row;
+  return jsonb_build_object('id', v_row.id);
+end $$;
+
+-- Returnerer filstierne, så appen kan slette selve filerne i Storage bagefter.
+create or replace function public.admin_delete_photo(p_id uuid) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  v_uid uuid := private.require_admin();
+  v_row public.property_photos;
+begin
+  delete from public.property_photos where id = p_id returning * into v_row;
+  if not found then
+    raise exception 'Billedet findes ikke.';
+  end if;
+  return jsonb_build_object('path', v_row.path, 'thumb_path', v_row.thumb_path);
+end $$;
+
+-- p_ids: JSON-liste med billed-id'er i den ønskede rækkefølge.
+create or replace function public.admin_order_photos(p_property_id text, p_ids jsonb) returns void
+language plpgsql security definer set search_path = '' as $$
+declare
+  v_uid uuid := private.require_admin();
+begin
+  update public.property_photos f set sort_order = x.ord
+  from jsonb_array_elements_text(p_ids) with ordinality as x(id, ord)
+  where f.id = x.id::uuid and f.property_id = p_property_id;
+end $$;
+
+-- Pladsforbrug til admin-skærmen.
+create or replace function public.admin_photo_usage() returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare
+  v_uid uuid := private.require_admin();
+begin
+  return (select jsonb_build_object('count', count(*), 'bytes', coalesce(sum(bytes), 0),
+                                    'limit_bytes', 800 * 1024 * 1024, 'per_property', 40)
+          from public.property_photos);
+end $$;
+
 create or replace function public.admin_create_password_reset(p_user_id uuid) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare
@@ -1200,7 +1316,8 @@ declare
   v_link public.guest_links;
 begin
   select * into v_link from public.guest_links where token = p_token;
-  if not found or v_link.revoked_at is not null or v_link.expires_at < now() then
+  if not found or v_link.revoked_at is not null or v_link.expires_at < now()
+     or not (select guest_links from public.settings) then
     raise exception 'Linket er ugyldigt eller udløbet. Bed den, der sendte det, om et nyt.';
   end if;
   return v_link;
@@ -1358,7 +1475,8 @@ declare
                            'admin_bookings', 'admin_booking_detail', 'admin_decide_booking',
                            'admin_save_booking', 'admin_delete_booking', 'admin_set_booking_note',
                            'admin_people', 'admin_create_invitation', 'admin_delete_invitation',
-                           'admin_update_member', 'admin_delete_member', 'admin_create_password_reset',
+                           'admin_update_member', 'admin_delete_member', 'admin_create_password_reset', 'admin_set_settings',
+                           'list_photos', 'admin_add_photo', 'admin_delete_photo', 'admin_order_photos', 'admin_photo_usage',
                            'admin_update_property', 'admin_update_property_access', 'admin_export'];
 begin
   for f in
@@ -1409,3 +1527,26 @@ on conflict (id) do nothing;
 
 insert into public.property_access (property_id) values ('mallorca'), ('odde')
 on conflict (property_id) do nothing;
+
+-- =====================================================================
+--  Billedlager (Supabase Storage)
+--
+--  Privat bucket: kun indloggede familiemedlemmer kan se billederne, og kun
+--  administratorer kan uploade og slette. Appen gør billederne små (WebP eller
+--  JPEG, højst 1800 px) før upload; bucketen afviser filer over 3 MB.
+-- =====================================================================
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('photos', 'photos', false, 3145728, array['image/webp', 'image/jpeg'])
+on conflict (id) do update
+set public = false, file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists "kolind_photos_read" on storage.objects;
+create policy "kolind_photos_read" on storage.objects for select to authenticated
+  using (bucket_id = 'photos' and private.is_member());
+drop policy if exists "kolind_photos_insert" on storage.objects;
+create policy "kolind_photos_insert" on storage.objects for insert to authenticated
+  with check (bucket_id = 'photos' and private.is_admin());
+drop policy if exists "kolind_photos_delete" on storage.objects;
+create policy "kolind_photos_delete" on storage.objects for delete to authenticated
+  using (bucket_id = 'photos' and private.is_admin());

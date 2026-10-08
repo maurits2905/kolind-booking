@@ -40,6 +40,9 @@ grant execute on all functions in schema t to public;
 create temporary table ids (name text primary key, id uuid);
 grant all on ids to public;
 
+-- Guest links are off by default; most tests below use them.
+update public.settings set guest_links = true;
+
 -- ---------------------------------------------------------------------
 -- 1. Invite-only signup (inserts done as the GoTrue role)
 -- ---------------------------------------------------------------------
@@ -448,5 +451,79 @@ select t.claims((select id from ids where name = 'anne'));
 select public.admin_create_invitation('dorte@example.com', 'Dorte', 'member');
 reset role;
 select t.ok('admin deletes a person completely and can invite the email again');
+
+-- Guest links switched off: no new links, existing links stop working, only
+-- admins can switch.
+insert into ids select 'link2', id from public.guest_links where revoked_at is null limit 1;
+set role authenticated;
+select t.claims((select id from ids where name = 'carl'));
+select t.fails($$select public.admin_set_settings(false)$$, 'administratorer');
+reset role;
+set role authenticated;
+select t.claims((select id from ids where name = 'anne'));
+select public.admin_set_settings(false);
+select t.fails($$select public.create_guest_link('X', null, 30)$$, 'slået fra');
+do $$ begin assert (public.get_me() ->> 'guest_links')::boolean = false; end $$;
+reset role;
+do $$
+declare tok text := (select token from public.guest_links order by created_at desc limit 1);
+begin
+  set local role anon;
+  begin
+    perform public.guest_link_info(tok);
+    raise exception 'guest link should not work';
+  exception when others then
+    if sqlerrm not like '%ugyldigt%' then raise; end if;
+  end;
+end $$;
+select t.ok('guest links can be switched off by admins');
+
+-- Photos: admins add/order/delete, members list, limits enforced, storage RLS.
+insert into storage.objects (bucket_id, name) values ('photos', 'odde/00000000-0000-0000-0000-000000000001.webp');
+set role authenticated;
+select t.claims((select id from ids where name = 'carl'));
+select t.fails($$select public.admin_add_photo('odde', 'odde/00000000-0000-0000-0000-000000000001.webp', 'odde/00000000-0000-0000-0000-000000000001-thumb.webp', 100, 100, 1000)$$, 'administratorer');
+select t.fails($$insert into storage.objects (bucket_id, name) values ('photos', 'odde/x.webp')$$, 'row-level security');
+reset role;
+set role authenticated;
+select t.claims((select id from ids where name = 'anne'));
+do $$
+declare a jsonb; b jsonb; l jsonb; d jsonb;
+begin
+  a := public.admin_add_photo('odde', 'odde/00000000-0000-0000-0000-000000000001.webp', 'odde/00000000-0000-0000-0000-000000000001-thumb.webp', 1800, 1200, 300000);
+  b := public.admin_add_photo('odde', 'odde/00000000-0000-0000-0000-000000000002.webp', 'odde/00000000-0000-0000-0000-000000000002-thumb.webp', 1800, 1200, 300000);
+  begin
+    perform public.admin_add_photo('odde', 'mallorca/00000000-0000-0000-0000-000000000003.webp', 'mallorca/00000000-0000-0000-0000-000000000003-thumb.webp', 1, 1, 1);
+    raise exception 'wrong folder accepted';
+  exception when others then
+    if sqlerrm not like '%hører ikke%' then raise; end if;
+  end;
+  begin
+    perform public.admin_add_photo('odde', 'odde/00000000-0000-0000-0000-000000000004.webp', 'odde/00000000-0000-0000-0000-000000000004-thumb.webp', 1, 1, 900 * 1024 * 1024);
+    raise exception 'over quota accepted';
+  exception when others then
+    if sqlerrm not like '%fuldt%' and sqlerrm not like '%check%' then raise; end if;
+  end;
+  perform public.admin_order_photos('odde', jsonb_build_array(b ->> 'id', a ->> 'id'));
+  l := public.list_photos('odde');
+  assert jsonb_array_length(l) = 2 and l -> 0 ->> 'id' = b ->> 'id', 'order';
+  d := public.admin_delete_photo((a ->> 'id')::uuid);
+  assert d ->> 'thumb_path' like '%-thumb.webp';
+  assert (public.admin_photo_usage() ->> 'count')::int = 1;
+end $$;
+insert into storage.objects (bucket_id, name) values ('photos', 'odde/00000000-0000-0000-0000-000000000009.webp');
+reset role;
+set role authenticated;
+select t.claims((select id from ids where name = 'carl'));
+do $$
+begin
+  assert jsonb_array_length(public.list_photos('odde')) = 1;
+  assert (select count(*) from storage.objects where bucket_id = 'photos') >= 1, 'members can read photo objects';
+end $$;
+reset role;
+set role anon;
+select t.fails($$select public.list_photos()$$);
+reset role;
+select t.ok('photos: admin manages, members view, limits and storage rules hold');
 
 select t.ok('ALL TESTS PASSED');

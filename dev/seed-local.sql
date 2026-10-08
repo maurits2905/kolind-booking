@@ -3,6 +3,9 @@
 -- Dates are relative to today, so the calendar always looks alive.
 -- Ida has an invitation but no account yet (shows the invite flow).
 
+-- The demo shows guest links, which are off by default.
+update public.settings set guest_links = true;
+
 insert into public.invitations (email, full_name, role, token) values
   ('anne@familien.dk',   'Anne',   'admin', 'local-invite-anne-0000000'),
   ('bent@familien.dk',   'Bent',   'admin', 'local-invite-bent-0000000'),

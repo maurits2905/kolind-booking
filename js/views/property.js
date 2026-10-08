@@ -14,6 +14,7 @@ import { footer } from '../shell.js';
 import { copyText, errorState, emptyState } from '../ui.js';
 import { weather, describe } from '../weather.js';
 import { navigate } from '../router.js';
+import { loadPhotos, photoStrip, bindPhotoStrip, openSlideshow } from '../gallery.js';
 import { selectionBar, selectionBarTemplate } from '../selection-bar.js';
 
 export function legendFor(admin) {
@@ -80,7 +81,9 @@ export default {
               <span class="hero-chip" data-now></span>
               <span class="hero-chip" data-weather hidden></span>
             </figcaption>
+            <button type="button" class="hero-chip hero-photos" data-open-photos hidden>${icon('image')}<span></span></button>
           </figure>
+          <div class="prop-gallery" data-gallery></div>
 
           <div class="prop-layout">
             <div class="prop-main">
@@ -186,6 +189,24 @@ export default {
       if (admin && item.dataset.entryId) openBookingDetail(item.dataset.entryId, { onChange: () => load(true) });
       else if (item.dataset.mine) navigate('/mine');
     });
+
+    // Gallery: the main photo first, then the uploaded ones (members only).
+    loadPhotos(p.id)
+      .then((list) => {
+        if (!list.length || !el.isConnected) return;
+        const slides = [{ full: st.image, thumb: st.imageSm, alt: p.name }, ...list.map((x) => ({ ...x, alt: p.name }))];
+        const host = $('[data-gallery]', el);
+        mount(host, photoStrip(slides));
+        bindPhotoStrip(host, slides);
+        const btn = $('[data-open-photos]', el);
+        $('span', btn).textContent = `Se alle ${slides.length} billeder`;
+        btn.hidden = false;
+        btn.addEventListener('click', () => openSlideshow(slides, 0));
+        const hero = $('.prop-hero img', el);
+        hero.classList.add('is-clickable');
+        hero.addEventListener('click', () => openSlideshow(slides, 0));
+      })
+      .catch(() => {});
 
     const load = async (force = false) => {
       try {

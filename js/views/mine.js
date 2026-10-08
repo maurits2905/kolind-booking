@@ -156,7 +156,8 @@ export default {
   access: 'member',
   title: () => 'Mine ophold',
   async render(el, r) {
-    let tab = ['kommende', 'tidligere', 'gaester'].includes(r.query.vis) ? r.query.vis : 'kommende';
+    const linksOn = Boolean(state.me?.guest_links);
+    let tab = ['kommende', 'tidligere', ...(linksOn ? ['gaester'] : [])].includes(r.query.vis) ? r.query.vis : 'kommende';
     let bookings = null;
     let guestLinks = null;
     let error = null;
@@ -181,7 +182,7 @@ export default {
             <div class="tabs" role="tablist">
               <button role="tab" aria-selected="${tab === 'kommende'}" data-tab="kommende">Kommende${bookings ? html`<span class="count">${upcoming.length}</span>` : ''}</button>
               <button role="tab" aria-selected="${tab === 'tidligere'}" data-tab="tidligere">Tidligere${bookings ? html`<span class="count">${past.length}</span>` : ''}</button>
-              <button role="tab" aria-selected="${tab === 'gaester'}" data-tab="gaester">Gæstelinks${guestLinks ? html`<span class="count">${activeLinks}</span>` : ''}</button>
+              ${linksOn ? html`<button role="tab" aria-selected="${tab === 'gaester'}" data-tab="gaester">Gæstelinks${guestLinks ? html`<span class="count">${activeLinks}</span>` : ''}</button>` : ''}
             </div>
             <div class="tab-panel" role="tabpanel">
               ${error
