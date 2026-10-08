@@ -199,7 +199,8 @@ export default {
         mount(host, photoStrip(slides));
         bindPhotoStrip(host, slides);
         const btn = $('[data-open-photos]', el);
-        $('span', btn).textContent = `Se alle ${slides.length} billeder`;
+        mount($('span', btn), html`<span class="photos-long">Se alle ${slides.length} billeder</span><span class="photos-short">${slides.length}</span>`);
+        btn.setAttribute('aria-label', `Se alle ${slides.length} billeder`);
         btn.hidden = false;
         btn.addEventListener('click', () => openSlideshow(slides, 0));
         const hero = $('.prop-hero img', el);

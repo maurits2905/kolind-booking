@@ -2067,6 +2067,25 @@ code {
 .hero-photos[hidden] {
   display: none;
 }
+.photos-short {
+  display: none;
+}
+/* Phones: the chips at the bottom fill the width, so the photo button moves
+   to the top-right corner as a compact pill. */
+@media (max-width: 699px) {
+  .hero-photos {
+    top: 14px;
+    right: 14px;
+    bottom: auto;
+    padding: 0 12px;
+  }
+  .photos-long {
+    display: none;
+  }
+  .photos-short {
+    display: inline;
+  }
+}
 .prop-hero img.is-clickable {
   cursor: zoom-in;
 }
