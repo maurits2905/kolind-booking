@@ -16,14 +16,14 @@ PORTRAIT_MIN_WIDTH = 600
 PROPERTIES = {
     "mallorca": {
         "src": "mallorca-original.jpg",
-        "wide": (125, 0, 800, 478),       # house and mountains, less road
-        "portrait": (150, 24, 646, 500),
+        "wide": (150, 90, 1448, 901),     # house and mountains, less road
+        "portrait": (300, 20, 1155, 920),
         "grade": {"color": 1.0, "contrast": 1.02, "brightness": 1.0, "warm": 1.0},
     },
     "odde": {
         "src": "odde-original.jpg",
-        "wide": (0, 0, 800, 450),
-        "portrait": (474, 55, 776, 373),  # the cabin on the right (the family's house), centred
+        "wide": (0, 40, 1125, 744),
+        "portrait": (712, 160, 1125, 595),  # the cabin on the right (the family's house), centred
         "upscale": True,
         "grade": {"color": 1.0, "contrast": 1.02, "brightness": 1.0, "warm": 1.0},
     },

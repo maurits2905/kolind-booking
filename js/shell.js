@@ -134,29 +134,16 @@ export function renderShell({ path = current.path, chrome = current.chrome, over
 }
 
 export function footer() {
-  const member = isMember();
+  const credit = config.credit;
   return html`<footer class="site-footer">
-    <div class="container row">
-      <div>
-        ${wordmark()}
-        <p class="small" style="margin-top:8px">${config.siteTagline || ''}${state.me ? html` · Hej ${firstName(state.me.full_name)}` : ''}</p>
-      </div>
-      ${member
-        ? html`<nav aria-label="Genveje">
-            <a href="#/kalender">Kalender</a>
-            <a href="#/mine">Mine ophold</a>
-            <a href="#/profil">Profil</a>
-          </nav>`
-        : html`<nav><a href="#/login">Log ind</a></nav>`}
+    <div class="container footer-credit">
+      <span>© ${new Date().getFullYear()} ${config.siteName}</span>
+      ${credit?.name
+        ? html`<span>Designet og udviklet af ${credit.url
+            ? html`<a href="${credit.url}" target="_blank" rel="noopener">${credit.name}${icon('linkedin')}</a>`
+            : credit.name}</span>`
+        : ''}
     </div>
-    ${config.credit?.name
-      ? html`<div class="container footer-credit">
-          <span>© ${new Date().getFullYear()} ${config.siteName}</span>
-          <span>Designet og udviklet af ${config.credit.url
-            ? html`<a href="${config.credit.url}" target="_blank" rel="noopener">${config.credit.name}${icon('linkedin')}</a>`
-            : config.credit.name}</span>
-        </div>`
-      : ''}
   </footer>`;
 }
 
